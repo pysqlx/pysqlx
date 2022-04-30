@@ -1,0 +1,11 @@
+char_string_column,datetime_column,float_column,integer_column,text_column
+some str,1990-01-01,20.0,101,some text
+some str,1990-01-01,20.0,101,some text
+some str,1990-01-01,20.0,101,some text
+some str,1990-01-01,20.0,101,some text
+some str,1990-01-01,20.0,101,some text
+some str2,1998-01-01,10.0,101,some text
+some str2,1998-01-01,10.0,101,some text
+some str2,1998-01-01,10.0,101,some text
+some str2,1998-01-01,10.0,101,some text
+some str2,1998-01-01,10.0,101,some text

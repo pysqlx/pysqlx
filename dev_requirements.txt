@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest
+autopep8
+flake8
+pylint
+mdToRst
