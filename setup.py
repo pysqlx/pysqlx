@@ -11,6 +11,7 @@ _dir = os.path.dirname(__file__)
 _init_path = os.path.join(_dir, 'pysqlx', '__init__.py')
 _req_path = os.path.join(_dir, 'requirements.txt')
 _readme_path = os.path.join(_dir, 'README.md')
+_package_path = os.path.join(_dir, 'pysqlx')
 
 
 def _get_version() -> str:
@@ -47,6 +48,18 @@ https://github.com/pysqlx/pysqlx
 '''
 
 
+def _get_packages() -> List[str]:
+    packages = []
+
+    for root, _, files in os.walk(_package_path):
+        if '__init__.py' in files:
+            packages.append(root)
+
+    return packages
+
+
+print(_get_packages())
+
 name = 'pysqlx'
 
 description = 'A simple SQL driver'
@@ -70,10 +83,6 @@ version = _get_version()
 install_requires = _get_requirements()
 
 license_name = 'MIT'
-
-packages = [
-    'pysqlx',
-]
 
 classifiers = [
     # How mature is this project? Common values are
@@ -108,7 +117,7 @@ setup(
     url=url,
     download_url=download_url,
     keywords=keywords,
-    packages=packages,
+    packages=_get_packages(),
     include_package_data=True,
     install_requires=install_requires,
     classifiers=classifiers,
