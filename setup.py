@@ -49,13 +49,11 @@ https://github.com/pysqlx/pysqlx
 
 
 def _get_packages() -> List[str]:
-    packages = []
-
-    for root, _, files in os.walk(_package_path):
-        if '__init__.py' in files:
-            packages.append(root)
-
-    return packages
+    return [
+        os.path.relpath(root, _dir)
+        for root, _, files in os.walk(_package_path)
+        if '__init__.py' in files
+    ]
 
 
 print(_get_packages())
