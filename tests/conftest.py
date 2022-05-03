@@ -12,6 +12,14 @@ _default_directory_path = None
 _default_local_dialect_name = 'sqlite'
 _default_local_driver_name = 'memory'
 
+_default_server_path = ''
+_default_user_name = ''
+_default_user_pass = ''
+_default_remote_dialect_name = ''
+_default_server_port = ''
+_default_is_trusted_connection = ''
+_default_remote_driver_name = ''
+
 
 @pytest.fixture(scope='function')
 def sqlite_dialect():
