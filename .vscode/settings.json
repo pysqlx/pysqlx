@@ -5,7 +5,12 @@
   "terminal.integrated.scrollback": 1000000,
   "python.autoComplete.extraPaths": [],
   "python.formatting.provider": "autopep8",
-  "python.formatting.autopep8Args": ["-a", "-a", "--max-line-length", "80"],
+  "python.formatting.autopep8Args": [
+    "-a",
+    "-a",
+    "--max-line-length",
+    "80"
+  ],
   "python.sortImports.args": [
     "--multi-line=3",
     "--line-width=80",
@@ -13,7 +18,7 @@
   ],
   "[python]": {
     "editor.codeActionsOnSave": {
-      "source.organizeImports": true
+      "source.organizeImports": "explicit"
     }
   },
   "python.linting.enabled": true,
@@ -47,6 +52,8 @@
     "pysqlx",
     "pytest",
     "sdist",
-    "setuptools"
+    "setuptools",
+    "venv",
+    "virtualenv"
   ]
 }
