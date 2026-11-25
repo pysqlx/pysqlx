@@ -105,6 +105,8 @@ never written into the SQL.
    :caption: Project
 
    project/changelog
+   project/roadmap
+   project/decisions
    project/development
    project/license
 
