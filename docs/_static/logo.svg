@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="116" height="116" viewBox="0 0 116 116">
+  <title>pysqlx</title>
+  <g fill="none" stroke="#4f46e5" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="58" cy="26" rx="38" ry="14"/>
+    <path d="M20 26v32c0 7.7 17 14 38 14s38-6.3 38-14V26"/>
+    <path d="M20 58v32c0 7.7 17 14 38 14s38-6.3 38-14V58"/>
+  </g>
+</svg>

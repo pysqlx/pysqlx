@@ -1,0 +1,128 @@
+"""Union query."""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+from typing import TYPE_CHECKING
+
+from ..structures import Clause, Column, Table
+from .query import Query
+from .select import Select
+from .utility import check_cols, check_order_by_cols
+
+if TYPE_CHECKING:
+    from ..clients.i_client import IClient
+
+
+class Union(Query):
+    """Query which combines the rows of several select queries.
+
+    :param client: the client which executes the query
+    :param structure_list: the tables which the select queries read from
+    :param query_list: the select queries to combine, one per table
+    :param columns_list: the columns to read from each select query. All
+        columns of the matching table by default.
+    :param is_all: whether to keep duplicate rows
+    :param ascend_by: the columns to sort by in ascending order
+    :param descend_by: the columns to sort by in descending order
+    :param condition: the condition which the rows satisfy
+    :raises RuntimeError: if an argument is invalid
+    """
+
+    def __init__(
+        self,
+        client: IClient,
+        structure_list: Sequence[Table],
+        query_list: Sequence[Select],
+        columns_list: Sequence[Sequence[Column] | None] | None,
+        is_all: bool,
+        ascend_by: Sequence[Column] | None,
+        descend_by: Sequence[Column] | None,
+        condition: Clause | None,
+    ) -> None:
+        super().__init__(client=client)
+
+        if not structure_list:
+            raise RuntimeError("empty structure_list")
+
+        if not query_list:
+            raise RuntimeError("empty query_list")
+
+        if len(query_list) != len(structure_list):
+            raise RuntimeError("query_list and structure_list size mismatch")
+
+        for query in query_list:
+            if not isinstance(query, Select):
+                raise RuntimeError(f'invalid query of type "{type(query).__name__}"')
+
+        if not columns_list:
+            columns_list = [None] * len(structure_list)
+
+        if len(columns_list) != len(structure_list):
+            raise RuntimeError("columns_list and structure_list size mismatch")
+
+        resolved_columns_list: list[Sequence[Column]] = []
+
+        for columns, structure in zip(columns_list, structure_list, strict=True):
+            if not columns:
+                columns = structure.columns
+
+            if not check_cols(columns, structure.columns):
+                raise RuntimeError("invalid columns")
+
+            if ascend_by and not check_cols(ascend_by, columns):
+                raise RuntimeError("invalid ascend_by")
+
+            if descend_by and not check_cols(descend_by, columns):
+                raise RuntimeError("invalid descend_by")
+
+            resolved_columns_list.append(columns)
+
+        if not check_order_by_cols(ascend_by, descend_by):
+            raise RuntimeError("invalid ascend_by and descend_by")
+
+        if not isinstance(is_all, bool):
+            raise RuntimeError(f'invalid is_all "{is_all}"')
+
+        self.__structure_list = structure_list
+        self.__query_list = query_list
+        self.__columns_list = resolved_columns_list
+        self.__is_all = is_all
+        self.__ascend_by = ascend_by
+        self.__descend_by = descend_by
+        self.__condition = condition
+
+    @property
+    def structure_list(self) -> Sequence[Table]:
+        """Tables which the select queries read from."""
+        return self.__structure_list
+
+    @property
+    def query_list(self) -> Sequence[Select]:
+        """Select queries to combine."""
+        return self.__query_list
+
+    @property
+    def columns_list(self) -> Sequence[Sequence[Column]]:
+        """Columns to read from each select query."""
+        return self.__columns_list
+
+    @property
+    def is_all(self) -> bool:
+        """Whether to keep duplicate rows."""
+        return self.__is_all
+
+    @property
+    def ascend_by(self) -> Sequence[Column] | None:
+        """Columns to sort by in ascending order, or ``None``."""
+        return self.__ascend_by
+
+    @property
+    def descend_by(self) -> Sequence[Column] | None:
+        """Columns to sort by in descending order, or ``None``."""
+        return self.__descend_by
+
+    @property
+    def condition(self) -> Clause | None:
+        """Condition which the rows satisfy, or ``None``."""
+        return self.__condition
