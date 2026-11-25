@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, override
 
+from ..exceptions import InvalidArgumentError
 from ..structures import Column, Table
 from .query import Query
 from .utility import check_cols
@@ -22,7 +23,7 @@ class Insert(Query):
     :param structure: the table to add rows to
     :param columns: the columns which values are given for. All columns of
         the table by default.
-    :raises RuntimeError: if the columns are empty or invalid
+    :raises InvalidArgumentError: if the columns are empty or invalid
     """
 
     def __init__(
@@ -37,10 +38,10 @@ class Insert(Query):
             columns = structure.columns
 
         if len(columns) < 1:
-            raise RuntimeError("empty columns")
+            raise InvalidArgumentError("empty columns")
 
         if not check_cols(columns, structure.columns):
-            raise RuntimeError("invalid columns")
+            raise InvalidArgumentError("invalid columns")
 
         self.__structure = structure
         self.__columns = columns
@@ -54,3 +55,11 @@ class Insert(Query):
     def columns(self) -> Sequence[Column]:
         """Columns which values are given for."""
         return self.__columns
+
+    @override
+    def execute(self, param_tuple: Sequence[Any] | None = None) -> None:
+        super().execute(param_tuple)
+
+    @override
+    def execute_many(self, param_tuple_list: Sequence[Sequence[Any]]) -> None:
+        super().execute_many(param_tuple_list)

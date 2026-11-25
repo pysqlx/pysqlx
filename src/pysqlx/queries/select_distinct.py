@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, override
 
+from ..exceptions import InvalidArgumentError
 from ..structures import Clause, Column, Table
 from .query import Query
 from .utility import check_cols, check_order_by_cols
@@ -22,7 +23,7 @@ class SelectDistinct(Query):
     :param ascend_by: the columns to sort by in ascending order
     :param descend_by: the columns to sort by in descending order
     :param condition: the condition which the rows satisfy
-    :raises RuntimeError: if an argument is invalid
+    :raises InvalidArgumentError: if an argument is invalid
     """
 
     def __init__(
@@ -37,19 +38,19 @@ class SelectDistinct(Query):
         super().__init__(client=client)
 
         if len(columns) < 1:
-            raise RuntimeError("empty columns")
+            raise InvalidArgumentError("empty columns")
 
         if not check_cols(columns, structure.columns):
-            raise RuntimeError("invalid columns")
+            raise InvalidArgumentError("invalid columns")
 
         if ascend_by and not check_cols(ascend_by, columns):
-            raise RuntimeError("invalid ascend_by")
+            raise InvalidArgumentError("invalid ascend_by")
 
         if descend_by and not check_cols(descend_by, columns):
-            raise RuntimeError("invalid descend_by")
+            raise InvalidArgumentError("invalid descend_by")
 
         if not check_order_by_cols(ascend_by, descend_by):
-            raise RuntimeError("invalid ascend_by and descend_by")
+            raise InvalidArgumentError("invalid ascend_by and descend_by")
 
         self.__structure = structure
         self.__columns = columns
@@ -81,3 +82,8 @@ class SelectDistinct(Query):
     def condition(self) -> Clause | None:
         """Condition which the rows satisfy, or ``None``."""
         return self.__condition
+
+    @override
+    def execute(self, param_tuple: Sequence[Any] | None = None) -> tuple[tuple[Any, ...], ...]:
+        rows: tuple[tuple[Any, ...], ...] = super().execute(param_tuple)
+        return rows

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from ...exceptions import InvalidArgumentError
 from .column import Column
 
 if TYPE_CHECKING:
@@ -21,6 +22,7 @@ class CharStringColumn(Column):
     :param default_value: the default value of the column, if any
     :param is_primary_key: whether the column is part of the primary key
     :param is_prevent_null: whether the column rejects null values
+    :raises InvalidArgumentError: if an argument has an invalid type or value
     """
 
     def __init__(
@@ -43,9 +45,12 @@ class CharStringColumn(Column):
             is_prevent_null=is_prevent_null,
         )
 
-        assert isinstance(is_unicode, bool)
-        assert isinstance(is_fixed, bool)
-        assert isinstance(size, int)
+        if not (isinstance(is_unicode, bool)):
+            raise InvalidArgumentError(f'invalid is_unicode "{is_unicode}"')
+        if not (isinstance(is_fixed, bool)):
+            raise InvalidArgumentError(f'invalid is_fixed "{is_fixed}"')
+        if not (isinstance(size, int)):
+            raise InvalidArgumentError(f'invalid size "{size}"')
 
         self.__is_unicode = is_unicode
         self.__is_fixed = is_fixed

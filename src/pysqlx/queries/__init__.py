@@ -8,6 +8,7 @@ from .insert import Insert
 from .is_empty import IsEmpty
 from .is_exists import IsExists
 from .query import Query
+from .reflect import Reflect
 from .select import Select
 from .select_distinct import SelectDistinct
 from .truncate import Truncate
@@ -23,6 +24,7 @@ __all__ = [
     "IsEmpty",
     "IsExists",
     "Query",
+    "Reflect",
     "Select",
     "SelectDistinct",
     "Truncate",

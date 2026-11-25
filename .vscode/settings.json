@@ -9,6 +9,8 @@
     "logicalclause",
     "mssql",
     "ODBC",
+    "psycopg",
+    "pymysql",
     "pyodbc",
     "pysqlx",
     "pytest",

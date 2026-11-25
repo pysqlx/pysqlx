@@ -3,25 +3,12 @@
 import os
 import sqlite3
 from collections.abc import Callable, Sequence
-from datetime import datetime
-from typing import Any, Self, cast, override
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Any, Self, override
 
+from ..exceptions import ConnectionFailedError, InvalidArgumentError
 from ..logger import logger
-from ..queries import (
-    Create,
-    Delete,
-    Drop,
-    GetLength,
-    Insert,
-    IsEmpty,
-    IsExists,
-    Select,
-    SelectDistinct,
-    Truncate,
-    Union,
-    Update,
-)
-from ..structures import Column, DatetimeColumn, Table
 from .i_client import IClient
 
 _disk_driver = "disk"
@@ -40,17 +27,18 @@ _system_drivers: tuple[str, ...] = (
 )
 
 
-def _convert_fetch_all(
-    ret_list: Sequence[Sequence[Any]],
-    columns: Sequence[Column],
-) -> tuple[tuple[Any, ...], ...]:
-    return tuple(
-        tuple(
-            datetime.fromisoformat(x[i]) if isinstance(columns[i], DatetimeColumn) else x[i]
-            for i in range(len(x))
-        )
-        for x in ret_list
-    )
+def _convert_parameter(value: Any) -> Any:
+    """Convert a value to one which SQLite can store."""
+    if isinstance(value, datetime):
+        return value.isoformat(" ")
+
+    if isinstance(value, date):
+        return value.isoformat()
+
+    if isinstance(value, Decimal):
+        return str(value)
+
+    return value
 
 
 def _get_connection(
@@ -61,10 +49,10 @@ def _get_connection(
 ) -> sqlite3.Connection:
     if driver_name == _disk_driver:
         if directory_path is None:
-            raise RuntimeError(f'directory_path is invalid "{directory_path}"')
+            raise InvalidArgumentError(f'directory_path is invalid "{directory_path}"')
 
         if database_name is None:
-            raise RuntimeError(f'database_name is invalid "{database_name}"')
+            raise InvalidArgumentError(f'database_name is invalid "{database_name}"')
 
         file_path = os.path.join(directory_path, database_name + ".db")
     else:
@@ -73,12 +61,10 @@ def _get_connection(
     _info(f'opening database at "{file_path}"')
 
     try:
-        if driver_name == _disk_driver:
-            conn = sqlite3.connect(f"file:{file_path}", isolation_level=None, uri=True)
-        else:
-            conn = sqlite3.connect(file_path, isolation_level=None)
+        conn = sqlite3.connect(file_path, isolation_level=None)
+        conn.execute("PRAGMA foreign_keys = ON")
     except Exception as e:
-        raise RuntimeError("could not open database, check file permissions") from e
+        raise ConnectionFailedError("could not open database, check file permissions") from e
 
     return conn
 
@@ -86,15 +72,21 @@ def _get_connection(
 class SqliteThree(IClient):
     """Client for a SQLite database, using the ``sqlite3`` module.
 
-    :param directory_path: the directory of the database file. Only used by
-        the ``"disk"`` driver.
+    Dates, dates with a time and decimal numbers are stored as text, and
+    booleans as integers. They are converted back when they are read from a
+    column of the matching type.
+
+    :param directory_path: the directory of the database file. Without it,
+        the database is kept in memory.
     :param dialect_name: the name of the dialect, ``"sqlite"``
     :param driver_name: ``"disk"`` for a database stored in the file
         ``<database_name>.db``, or ``"memory"`` for a database kept in
-        memory. The first available driver by default.
-    :param database_name: the name of the database
-    :raises RuntimeError: if an argument is invalid or the database cannot be
-        opened
+        memory. By default, ``"disk"`` when a directory is given and
+        ``"memory"`` otherwise.
+    :param database_name: the name of the database, which the ``"disk"``
+        driver needs
+    :raises InvalidArgumentError: if an argument is invalid
+    :raises ConnectionFailedError: if the database cannot be opened
     """
 
     @staticmethod
@@ -119,27 +111,29 @@ class SqliteThree(IClient):
 
     def __init__(
         self,
-        directory_path: str | None,
-        dialect_name: str,
-        driver_name: str | None,
-        database_name: str | None,
+        directory_path: str | None = None,
+        dialect_name: str = "sqlite",
+        driver_name: str | None = None,
+        database_name: str | None = None,
     ) -> None:
         super().__init__(
             database_name=database_name,
         )
 
+        self._check_dialect(dialect_name)
+
         if driver_name is None:
-            driver_name = self._get_default_driver(dialect_name)
+            driver_name = _memory_driver if directory_path is None else _disk_driver
 
         if not self._is_valid_driver(dialect_name, driver_name):
-            raise RuntimeError(f'driver_name is invalid "{driver_name}"')
+            raise InvalidArgumentError(f'driver_name is invalid "{driver_name}"')
 
         if driver_name == _disk_driver:
             if directory_path is not None:
                 directory_path = os.path.abspath(directory_path)
 
             if not self._is_valid_directory_path(directory_path):
-                raise RuntimeError(f'directory_path is invalid "{directory_path}"')
+                raise InvalidArgumentError(f'directory_path is invalid "{directory_path}"')
 
         self._set_connection(
             _get_connection(
@@ -152,135 +146,16 @@ class SqliteThree(IClient):
         self._set_dialect(dialect_name)
 
     @override
-    def _execute_sql_string(self, sql_string: str, param_tuple: Sequence[Any] | None) -> Any:
-        cur = self._connection.cursor()
-
-        if param_tuple:
-            cur.execute(sql_string, param_tuple)
-        else:
-            cur.execute(sql_string)
-
-        return cur
+    def _convert_parameters(self, parameters: Sequence[Any]) -> Sequence[Any]:
+        return [_convert_parameter(value) for value in parameters]
 
     @override
-    def _execute_many_sql_string(
-        self, sql_string: str, param_tuple_list: Sequence[Sequence[Any]]
-    ) -> Any:
-        return self._connection.cursor().executemany(sql_string, param_tuple_list)
-
-    @override
-    def _execute_Create(self, query: Create, param_tuple: Sequence[Any] | None) -> None:
-        self._execute(sql_string=self.get_query_string(query), param_tuple=param_tuple)
-
-    @override
-    def _execute_Delete(self, query: Delete, param_tuple: Sequence[Any] | None) -> None:
-        self._execute(sql_string=self.get_query_string(query), param_tuple=param_tuple)
-
-    @override
-    def _execute_Drop(self, query: Drop, param_tuple: Sequence[Any] | None) -> None:
-        self._execute(sql_string=self.get_query_string(query), param_tuple=param_tuple)
-
-    @override
-    def _execute_GetLength(self, query: GetLength, param_tuple: Sequence[Any] | None) -> Any:
-        ret = self._execute(
-            sql_string=self.get_query_string(query), param_tuple=param_tuple
-        ).fetchall()
-
-        logger.debug(f'received "{ret}"')
-
-        return ret[0][0]
-
-    @override
-    def _execute_Insert(self, query: Insert, param_tuple: Sequence[Any] | None) -> None:
-        self._execute(sql_string=self.get_query_string(query), param_tuple=param_tuple)
-
-    @override
-    def _execute_IsEmpty(self, query: IsEmpty, param_tuple: Sequence[Any] | None) -> bool:
-        ret = self._execute(
-            sql_string=self.get_query_string(query), param_tuple=param_tuple
-        ).fetchall()
-
-        logger.debug(f'received "{ret}"')
-
-        return True if (ret and ret[0][0] == 0) else False
-
-    @override
-    def _execute_IsExists(self, query: IsExists, param_tuple: Sequence[Any] | None) -> bool:
-        ret = self._execute(
-            sql_string=self.get_query_string(query), param_tuple=param_tuple
-        ).fetchall()
-
-        logger.debug(f'received "{ret}"')
-
-        table = cast(Table, query.structure)
-        return True if (ret and ret[0][0] == table.table_name) else False
-
-    @override
-    def _execute_Select(
-        self, query: Select, param_tuple: Sequence[Any] | None
-    ) -> tuple[tuple[Any, ...], ...]:
-        ret = self._execute(
-            sql_string=self.get_query_string(query), param_tuple=param_tuple
-        ).fetchall()
-
-        logger.debug(f'received "{ret}"')
-
-        return _convert_fetch_all(ret, query.columns)
-
-    @override
-    def _execute_SelectDistinct(
-        self, query: SelectDistinct, param_tuple: Sequence[Any] | None
-    ) -> tuple[tuple[Any, ...], ...]:
-        ret = self._execute(
-            sql_string=self.get_query_string(query), param_tuple=param_tuple
-        ).fetchall()
-
-        logger.debug(f'received "{ret}"')
-
-        return _convert_fetch_all(ret, query.columns)
-
-    @override
-    def _execute_Truncate(self, query: Truncate, param_tuple: Sequence[Any] | None) -> None:
-        self._execute(sql_string=self.get_query_string(query), param_tuple=param_tuple)
-
-    @override
-    def _execute_Union(
-        self, query: Union, param_tuple: Sequence[Any] | None
-    ) -> tuple[tuple[Any, ...], ...]:
-        ret = self._execute(
-            sql_string=self.get_query_string(query), param_tuple=param_tuple
-        ).fetchall()
-
-        logger.debug(f'received "{ret}"')
-
-        return _convert_fetch_all(ret, query.columns_list[0])
-
-    @override
-    def _execute_Update(self, query: Update, param_tuple: Sequence[Any] | None) -> None:
-        self._execute(sql_string=self.get_query_string(query), param_tuple=param_tuple)
-
-    @override
-    def _execute_many_Insert(
-        self, query: Insert, param_tuple_list: Sequence[Sequence[Any]]
-    ) -> None:
-        self._execute_many(
-            sql_string=self.get_query_string(query), param_tuple_list=param_tuple_list
-        )
-
-    @override
-    def _execute_many_Update(
-        self, query: Update, param_tuple_list: Sequence[Sequence[Any]]
-    ) -> None:
-        self._execute_many(
-            sql_string=self.get_query_string(query), param_tuple_list=param_tuple_list
-        )
+    def _begin_transaction(self) -> None:
+        self._connection.execute("BEGIN")
 
     def backup_to(self, other: Self) -> None:
         """Copy the database to the database of another client.
 
         :param other: the client of the database to copy to
         """
-        from_db = self._connection
-        to_db = other._connection
-        with from_db, to_db:
-            from_db.backup(to_db)
+        self._connection.backup(other._connection)

@@ -5,6 +5,19 @@ from collections.abc import Iterable, Sequence
 from ..structures import Column
 
 
+def has_col(col: Column, cols_all: Iterable[Column]) -> bool:
+    """Check that a column is among the allowed ones.
+
+    Columns are compared by identity, because ``==`` on a column creates a
+    clause.
+
+    :param col: the column to check
+    :param cols_all: the allowed columns
+    :returns: whether the column is one of the allowed columns
+    """
+    return any(col is other for other in cols_all)
+
+
 def check_cols(cols: Iterable[Column], cols_all: Sequence[Column]) -> bool:
     """Check that columns are among the allowed ones.
 
@@ -12,10 +25,7 @@ def check_cols(cols: Iterable[Column], cols_all: Sequence[Column]) -> bool:
     :param cols_all: the allowed columns
     :returns: whether every column is one of the allowed columns
     """
-    for col in cols:
-        if col not in cols_all:
-            return False
-    return True
+    return all(has_col(col, cols_all) for col in cols)
 
 
 def check_order_by_cols(
@@ -28,18 +38,7 @@ def check_order_by_cols(
     :param cols1: the columns to sort by in descending order
     :returns: whether the two sets of columns have no column in common
     """
-    if not all((cols0, cols1)):
+    if not cols0 or not cols1:
         return True
 
-    assert cols0 is not None
-    assert cols1 is not None
-
-    for col in cols0:
-        if col in cols1:
-            return False
-
-    for col in cols1:
-        if col in cols0:
-            return False
-
-    return True
+    return not any(has_col(col, cols1) for col in cols0)

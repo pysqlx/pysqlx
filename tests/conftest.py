@@ -1,24 +1,15 @@
+import os
+from collections.abc import Iterator
+from urllib.parse import SplitResult, unquote, urlsplit
+
 import pytest
 
-from pysqlx.clients import ClientFactory, Pyodbc, SqliteThree
+from pysqlx.clients import ClientFactory, Psycopg, Pymysql, Pyodbc, SqliteThree
 from pysqlx.dialects import Sqlite as SqliteDialect
-from pysqlx.structures import Database, Schema, Table
+from pysqlx.structures import Table
 
 _default_database_name = "TestDatabase"
-_default_schema_name = "dbo"
 _default_table_name = "test"
-
-_default_directory_path: str | None = None
-_default_local_dialect_name = "sqlite"
-_default_local_driver_name = "memory"
-
-_default_server_path = ""
-_default_user_name = ""
-_default_user_pass = ""
-_default_remote_dialect_name = ""
-_default_server_port: int | None = None
-_default_is_trusted_connection = False
-_default_remote_driver_name: str | None = None
 
 
 @pytest.fixture(scope="function")
@@ -27,44 +18,82 @@ def sqlite_dialect() -> SqliteDialect:
 
 
 @pytest.fixture(scope="function")
-def sqlite3_client() -> SqliteThree:
-    return ClientFactory.get_sqlite3_client(
-        directory_path=_default_directory_path,
-        dialect_name=_default_local_dialect_name,
-        driver_name=_default_local_driver_name,
-        database_name=_default_database_name,
-    )
+def sqlite3_client() -> Iterator[SqliteThree]:
+    client = ClientFactory.get_sqlite3_client(database_name=_default_database_name)
+
+    yield client
+
+    client.close()
+
+
+def _server(variable_name: str) -> SplitResult:
+    """Read the address of a test server, given as user:password@host:port/database."""
+    value = os.environ.get(variable_name)
+
+    if not value:
+        if os.environ.get("PYSQLX_TEST_REQUIRE_SERVERS"):
+            pytest.fail(f"{variable_name} is not set")
+
+        pytest.skip(f"{variable_name} is not set")
+
+    return urlsplit("//" + value)
 
 
 @pytest.fixture(scope="function")
-def pyodbc_client_general() -> Pyodbc:
-    return ClientFactory.get_pyodbc_client(
-        server_address=_default_server_path,
-        user_name=_default_user_name,
-        user_pass=_default_user_pass,
-        dialect_name=_default_remote_dialect_name,
-        server_port=_default_server_port,
-        is_trusted_connection=_default_is_trusted_connection,
-        driver_name=_default_remote_driver_name,
-        database_name=None,
+def psycopg_client() -> Iterator[Psycopg]:
+    server = _server("PYSQLX_TEST_POSTGRESQL")
+
+    client = ClientFactory.get_psycopg_client(
+        server_address=server.hostname or "",
+        user_name=unquote(server.username or ""),
+        user_pass=unquote(server.password or ""),
+        server_port=server.port,
+        database_name=server.path.lstrip("/") or None,
     )
+
+    yield client
+
+    client.close()
 
 
 @pytest.fixture(scope="function")
-def pyodbc_client_db() -> Pyodbc:
-    return ClientFactory.get_pyodbc_client(
-        server_address=_default_server_path,
-        user_name=_default_user_name,
-        user_pass=_default_user_pass,
-        dialect_name=_default_remote_dialect_name,
-        server_port=_default_server_port,
-        is_trusted_connection=_default_is_trusted_connection,
-        driver_name=_default_remote_driver_name,
-        database_name=_default_database_name,
+def pymysql_client() -> Iterator[Pymysql]:
+    server = _server("PYSQLX_TEST_MYSQL")
+
+    client = ClientFactory.get_pymysql_client(
+        server_address=server.hostname or "",
+        user_name=unquote(server.username or ""),
+        user_pass=unquote(server.password or ""),
+        server_port=server.port,
+        database_name=server.path.lstrip("/") or None,
     )
 
+    yield client
 
-def _fill_table(test_table: Table) -> None:
+    client.close()
+
+
+@pytest.fixture(scope="function")
+def pyodbc_client() -> Iterator[Pyodbc]:
+    server = _server("PYSQLX_TEST_MSSQL")
+
+    client = ClientFactory.get_pyodbc_client(
+        server_address=server.hostname or "",
+        user_name=unquote(server.username or ""),
+        user_pass=unquote(server.password or ""),
+        server_port=server.port,
+        database_name=server.path.lstrip("/") or None,
+        connection_options={"TrustServerCertificate": "yes"},
+    )
+
+    yield client
+
+    client.close()
+
+
+@pytest.fixture(scope="function")
+def local_table() -> Table:
+    test_table = Table(table_name=_default_table_name)
 
     test_table.append_char_string_column(
         column_name="char_string_column",
@@ -94,27 +123,5 @@ def _fill_table(test_table: Table) -> None:
     test_table.append_text_column(
         column_name="text_column", is_unicode=False, is_primary_key=False, is_prevent_null=False
     )
-
-
-@pytest.fixture(scope="function")
-def local_table() -> Table:
-
-    test_table = Table(table_name=_default_table_name)
-
-    _fill_table(test_table)
-
-    return test_table
-
-
-@pytest.fixture(scope="function")
-def remote_table() -> Table:
-
-    db = Database(database_name=_default_database_name)
-
-    schema = Schema(schema_name=_default_schema_name)
-
-    test_table = Table(table_name=_default_table_name, database=db, schema=schema)
-
-    _fill_table(test_table)
 
     return test_table

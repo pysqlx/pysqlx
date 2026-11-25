@@ -12,19 +12,14 @@ Working with a database takes four steps:
 Connecting
 ----------
 
-A client is created by :py:class:`~pysqlx.clients.ClientFactory`. This one
-keeps a SQLite database in memory, which needs no setup:
+A client is created by :py:class:`~pysqlx.clients.ClientFactory`. Without
+arguments, this one keeps a SQLite database in memory, which needs no setup:
 
 .. code-block:: python
 
     from pysqlx import ClientFactory
 
-    client = ClientFactory.get_sqlite3_client(
-        directory_path=None,
-        dialect_name="sqlite",
-        driver_name="memory",
-        database_name="shop",
-    )
+    client = ClientFactory.get_sqlite3_client()
 
 Describing a table
 ------------------
@@ -38,7 +33,9 @@ they are used to build conditions and to choose what a query reads.
     from pysqlx import Table
 
     orders = Table(table_name="orders")
-    order_id = orders.append_integer_column(column_name="id", is_primary_key=True)
+    order_id = orders.append_integer_column(
+        column_name="id", is_identity=True, is_primary_key=True
+    )
     customer = orders.append_char_string_column(column_name="customer", size=50)
     placed = orders.append_datetime_column(column_name="placed")
     total = orders.append_float_column(column_name="total")
@@ -59,18 +56,21 @@ Adding rows
 -----------
 
 The values of a row are given when the query is executed, one per column.
-``execute_many()`` adds several rows at once.
+The database generates the values of the identity column, so the query names
+the other columns. ``execute_many()`` adds several rows at once.
 
 .. code-block:: python
 
     from datetime import datetime
 
-    client.insert(orders).execute(param_tuple=(1, "Ada", datetime(2026, 1, 5), 120.0))
+    insert = client.insert(orders, columns=[customer, placed, total])
 
-    client.insert(orders).execute_many(
+    insert.execute(param_tuple=("Ada", datetime(2026, 1, 5), 120.0))
+
+    insert.execute_many(
         param_tuple_list=[
-            (2, "Grace", datetime(2026, 1, 7), 80.5),
-            (3, "Ada", datetime(2026, 2, 1), 42.0),
+            ("Grace", datetime(2026, 1, 7), 80.5),
+            ("Ada", datetime(2026, 2, 1), 42.0),
         ]
     )
 
@@ -88,26 +88,30 @@ parentheses.
 
     query = client.select(
         orders,
-        columns=[customer, total],
+        columns=[order_id, total],
         condition=(customer == "Ada") & (total > 50),
     )
 
     print(query.execute())
-    # (('Ada', 120.0),)
+    # ((1, 120.0),)
 
 The result is a tuple of rows, and each row is a tuple of values.
 
 Seeing the SQL
 --------------
 
-A query is a description, not a string. To see the SQL which a client sends
-for it, use ``get_query_string()``:
+A query is a description, not a string. To read the SQL of a query, use
+``get_query_string()``:
 
 .. code-block:: python
 
     print(client.get_query_string(query))
-    # SELECT [customer],
-    # [total] FROM orders WHERE ([customer] = 'Ada') AND ([total] > 50)
+    # SELECT [id],
+    # [total] FROM [orders] WHERE ([customer] = 'Ada') AND ([total] > 50)
+
+When the query is executed, the values ``'Ada'`` and ``50`` are not written
+into the SQL: they are passed to the database separately, as parameters. A
+value can therefore contain any character and come from anywhere.
 
 Changing and removing rows
 --------------------------
@@ -121,11 +125,24 @@ Changing and removing rows
     print(client.get_length(orders).execute())
     # 2
 
+Closing
+-------
+
+Close the client when you are done, or use it in a ``with`` statement, which
+closes it at the end:
+
+.. code-block:: python
+
+    with ClientFactory.get_sqlite3_client() as client:
+        client.create(orders).execute()
+
 Where to go next
 ----------------
 
-* :doc:`/guide/clients` describes connecting to SQLite and to SQL Server
-* :doc:`/guide/structures` describes tables and the types of columns
+* :doc:`/guide/clients` describes connecting to each database
+* :doc:`/guide/structures` describes tables, the types of columns, foreign
+  keys and indexes
 * :doc:`/guide/conditions` describes every condition
 * :doc:`/guide/queries` describes every query and what it returns
+* :doc:`/guide/transactions` describes grouping changes
 * :doc:`/reference/index` documents every class and method

@@ -1,18 +1,25 @@
 """Table."""
 
 import weakref
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from typing import Any, Self
 
+from ..exceptions import InvalidArgumentError
 from .columntypes import (
+    Aggregate,
+    BinaryColumn,
+    BooleanColumn,
     CharStringColumn,
     Column,
+    DateColumn,
     DatetimeColumn,
+    DecimalColumn,
     FloatColumn,
     IntegerColumn,
     TextColumn,
 )
 from .database import Database
+from .foreign_key import ForeignKey
 from .schema import Schema
 from .structure import Structure
 
@@ -41,6 +48,7 @@ class Table(Structure):
         self.__schema = schema
 
         self.__cols: list[Column] = []
+        self.__foreign_keys: list[ForeignKey] = []
 
     @property
     def table_name(self) -> str:
@@ -62,13 +70,50 @@ class Table(Structure):
         """Columns of the table, in the order in which they were added."""
         return self.__cols
 
+    @property
+    def foreign_keys(self) -> list[ForeignKey]:
+        """Foreign keys of the table, in the order in which they were added."""
+        return self.__foreign_keys
+
     def clear_columns(self) -> Self:
-        """Remove all columns of the table.
+        """Remove all columns and foreign keys of the table.
 
         :returns: the table itself
         """
         self.__cols = []
+        self.__foreign_keys = []
         return self
+
+    def count(self) -> Aggregate:
+        """Create an aggregate which counts rows.
+
+        :returns: the aggregate, to read with a select query
+        """
+        return Aggregate(function_name="COUNT", column=None)
+
+    def append_foreign_key(
+        self,
+        columns: Sequence[Column],
+        reference_columns: Sequence[Column],
+    ) -> ForeignKey:
+        """Make columns of the table refer to the rows of another table.
+
+        The foreign key takes effect when the table is created.
+
+        :param columns: the columns of this table which refer to the other
+            table
+        :param reference_columns: the columns of the other table which they
+            refer to, in the same order
+        :returns: the new foreign key
+        :raises InvalidArgumentError: if the columns are invalid
+        """
+        for column in columns:
+            if not any(column is col for col in self.__cols):
+                raise InvalidArgumentError("invalid columns")
+
+        foreign_key = ForeignKey(columns=columns, reference_columns=reference_columns)
+        self.__foreign_keys.append(foreign_key)
+        return foreign_key
 
     def append_column(self, col_obj: Column) -> Column:
         """Add a column object to the table.
@@ -76,14 +121,14 @@ class Table(Structure):
         :param col_obj: the column, which must have been created for this
             table
         :returns: the column
-        :raises RuntimeError: if the object is not a column or belongs to
-            another table
+        :raises InvalidArgumentError: if the object is not a column or
+            belongs to another table
         """
         if not isinstance(col_obj, Column):
-            raise RuntimeError("invalid column object")
+            raise InvalidArgumentError("invalid column object")
 
-        if col_obj.table.table_name is not self.table_name:
-            raise RuntimeError("column belongs to another table")
+        if col_obj.table.table_name != self.table_name:
+            raise InvalidArgumentError("column belongs to another table")
 
         self.__cols.append(col_obj)
 
@@ -240,6 +285,112 @@ class Table(Structure):
             column_name=column_name,
             table=weakref.proxy(self),
             is_unicode=is_unicode,
+            default_value=default_value,
+            is_primary_key=is_primary_key,
+            is_prevent_null=is_prevent_null,
+        )
+        self.append_column(col_obj=column)
+        return column
+
+    def append_boolean_column(
+        self,
+        column_name: str,
+        default_value: Any = None,
+        is_primary_key: bool = False,
+        is_prevent_null: bool = False,
+    ) -> BooleanColumn:
+        """Add a column which holds booleans.
+
+        :param column_name: the name of the column
+        :param default_value: the default value of the column, if any
+        :param is_primary_key: whether the column is part of the primary key
+        :param is_prevent_null: whether the column rejects null values
+        :returns: the new column
+        """
+        column = BooleanColumn(
+            column_name=column_name,
+            table=weakref.proxy(self),
+            default_value=default_value,
+            is_primary_key=is_primary_key,
+            is_prevent_null=is_prevent_null,
+        )
+        self.append_column(col_obj=column)
+        return column
+
+    def append_date_column(
+        self,
+        column_name: str,
+        default_value: Any = None,
+        is_primary_key: bool = False,
+        is_prevent_null: bool = False,
+    ) -> DateColumn:
+        """Add a column which holds dates without a time.
+
+        :param column_name: the name of the column
+        :param default_value: the default value of the column, if any
+        :param is_primary_key: whether the column is part of the primary key
+        :param is_prevent_null: whether the column rejects null values
+        :returns: the new column
+        """
+        column = DateColumn(
+            column_name=column_name,
+            table=weakref.proxy(self),
+            default_value=default_value,
+            is_primary_key=is_primary_key,
+            is_prevent_null=is_prevent_null,
+        )
+        self.append_column(col_obj=column)
+        return column
+
+    def append_decimal_column(
+        self,
+        column_name: str,
+        precision: int = 18,
+        scale: int = 2,
+        default_value: Any = None,
+        is_primary_key: bool = False,
+        is_prevent_null: bool = False,
+    ) -> DecimalColumn:
+        """Add a column which holds decimal numbers with a fixed number of digits.
+
+        :param column_name: the name of the column
+        :param precision: the total number of digits
+        :param scale: the number of digits after the decimal point
+        :param default_value: the default value of the column, if any
+        :param is_primary_key: whether the column is part of the primary key
+        :param is_prevent_null: whether the column rejects null values
+        :returns: the new column
+        """
+        column = DecimalColumn(
+            column_name=column_name,
+            table=weakref.proxy(self),
+            precision=precision,
+            scale=scale,
+            default_value=default_value,
+            is_primary_key=is_primary_key,
+            is_prevent_null=is_prevent_null,
+        )
+        self.append_column(col_obj=column)
+        return column
+
+    def append_binary_column(
+        self,
+        column_name: str,
+        default_value: Any = None,
+        is_primary_key: bool = False,
+        is_prevent_null: bool = False,
+    ) -> BinaryColumn:
+        """Add a column which holds binary data of unlimited size.
+
+        :param column_name: the name of the column
+        :param default_value: the default value of the column, if any
+        :param is_primary_key: whether the column is part of the primary key
+        :param is_prevent_null: whether the column rejects null values
+        :returns: the new column
+        """
+        column = BinaryColumn(
+            column_name=column_name,
+            table=weakref.proxy(self),
             default_value=default_value,
             is_primary_key=is_primary_key,
             is_prevent_null=is_prevent_null,

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, override
 
 from ..structures import Structure
 from .query import Query
@@ -12,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class IsExists(Query):
-    """Query which checks whether a database, a schema or a table exists.
+    """Query which checks whether a database, a schema, a table or an index exists.
 
     :param client: the client which executes the query
     :param structure: the structure to look for
@@ -27,3 +28,8 @@ class IsExists(Query):
     def structure(self) -> Structure:
         """Structure to look for."""
         return self.__structure
+
+    @override
+    def execute(self, param_tuple: Sequence[Any] | None = None) -> bool:
+        result: bool = super().execute(param_tuple)
+        return result
