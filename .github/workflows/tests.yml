@@ -11,6 +11,20 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  # A new push to a pull request cancels the run of the previous one.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # The make targets run in the environment which install-test prepared.
+  UV_NO_SYNC: "1"
+
+defaults:
+  run:
+    # The same shell on every system, which make needs on Windows.
+    shell: bash
+
 jobs:
   # The whole test suite with SQLite, which needs no database server.
   unit:
@@ -20,6 +34,12 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.11", "3.12", "3.13", "3.14"]
+        # macOS runners are scarce: test the oldest and the newest version there.
+        exclude:
+          - os: macos-latest
+            python-version: "3.12"
+          - os: macos-latest
+            python-version: "3.13"
       fail-fast: false
 
     runs-on: ${{ matrix.os }}
@@ -36,10 +56,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --locked --no-default-groups --group test
+        run: make install-test
 
       - name: Run the tests
-        run: uv run --no-sync pytest -n auto --cov --cov-report=term-missing:skip-covered
+        run: make coverage
 
   # The clients against real servers, which run as containers on Linux only.
   servers-linux:
@@ -92,46 +112,23 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v7
 
-      - name: Install the ODBC driver for SQL Server
-        run: |
-          if odbcinst -q -d 2>/dev/null | grep -q "ODBC Driver 18 for SQL Server"; then
-            exit 0
-          fi
-
-          install() {
-            sudo apt-get update && sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
-          }
-
-          # The runner usually knows the package source of Microsoft already.
-          if ! install; then
-            curl -fsSL https://packages.microsoft.com/keys/microsoft.asc |
-              sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
-            echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/ubuntu/$(lsb_release -rs)/prod $(lsb_release -cs) main" |
-              sudo tee /etc/apt/sources.list.d/mssql-release.list
-            install
-          fi
-
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           python-version: "3.13"
 
+      - name: Install the ODBC driver for SQL Server
+        run: make odbc-driver
+
       - name: Install dependencies
-        run: uv sync --locked --no-default-groups --group test
+        run: make install-test
 
       - name: Wait for SQL Server
-        run: |
-          for attempt in $(seq 1 60); do
-            if (echo > /dev/tcp/127.0.0.1/1433) 2>/dev/null; then
-              break
-            fi
-            sleep 2
-          done
-          sleep 15
+        run: make sql-server-wait
 
       - name: Run the tests
-        run: uv run --no-sync pytest tests/clients
+        run: make test-clients
 
   # The ODBC client where the servers of servers-linux cannot run.
   sql-server-desktop:
@@ -163,43 +160,24 @@ jobs:
           install: sqlengine
           sa-password: Pysqlx_test_1
 
-      - name: Start SQL Server in a container (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install docker colima
-          colima start --cpu 2 --memory 4
-          docker run -d --name mssql -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD=Pysqlx_test_1 \
-            -p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest
-
-      - name: Install the ODBC driver for SQL Server (macOS)
-        if: runner.os == 'macOS'
-        env:
-          HOMEBREW_ACCEPT_EULA: "Y"
-        run: |
-          brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
-          brew trust microsoft/mssql-release
-          brew install msodbcsql18
-
-      - name: Wait for SQL Server (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          for attempt in $(seq 1 60); do
-            if docker logs mssql 2>&1 | grep -q "SQL Server is now ready for client connections"; then
-              exit 0
-            fi
-            sleep 5
-          done
-          docker logs mssql
-          exit 1
-
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           python-version: "3.13"
 
+      - name: Start SQL Server in a container (macOS)
+        if: runner.os == 'macOS'
+        run: make sql-server-up
+
+      - name: Install the ODBC driver for SQL Server
+        run: make odbc-driver
+
       - name: Install dependencies
-        run: uv sync --locked --no-default-groups --group test
+        run: make install-test
+
+      - name: Wait for SQL Server
+        run: make sql-server-wait
 
       - name: Run the tests
-        run: uv run --no-sync pytest tests/clients/test_sql_server_client.py
+        run: make test-sql-server

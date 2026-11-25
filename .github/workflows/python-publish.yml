@@ -27,16 +27,12 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Build the distributions
-        run: uv build
+        run: make build
 
       - name: Check that the version matches the release tag
         env:
           TAG: ${{ github.event.release.tag_name }}
-        run: |
-          version="${TAG#v}"
-          ls dist
-          test -f "dist/pysqlx-${version}.tar.gz"
-          test -f "dist/pysqlx-${version}-py3-none-any.whl"
+        run: make check-version TAG="$TAG"
 
       - name: Publish to PyPI
-        run: uv publish
+        run: make publish
