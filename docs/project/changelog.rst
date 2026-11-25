@@ -3,8 +3,8 @@ Changelog
 
 All notable changes to ``pysqlx``, most recent first.
 
-Unreleased
-----------
+3.0.0 (2026-11-25)
+------------------
 
 This version renames parts of the interface, so that the names say what they
 stand for. The old names were removed, without a period in which both work.
