@@ -19,11 +19,11 @@ Clients
    :nosignatures:
 
    ClientFactory
-   IClient
-   SqliteThree
-   Psycopg
-   Pymysql
-   Pyodbc
+   Client
+   SqliteClient
+   PostgreSqlClient
+   MySqlClient
+   SqlServerClient
 
 Structures
 ----------
@@ -106,10 +106,10 @@ Queries
    Query
    Create
    Drop
-   IsExists
+   Exists
    Reflect
    IsEmpty
-   GetLength
+   CountRows
    Insert
    Select
    SelectDistinct
@@ -128,7 +128,7 @@ Dialects
    :template: autosummary/class.rst
    :nosignatures:
 
-   IDialect
+   Dialect
    Sqlite
    PostgreSql
    MySql

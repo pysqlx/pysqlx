@@ -13,14 +13,14 @@ from .select import Select
 from .utility import check_cols, check_order_by_cols
 
 if TYPE_CHECKING:
-    from ..clients.i_client import IClient
+    from ..clients.client import Client
 
 
 class Union(Query):
     """Query which combines the rows of several select queries.
 
     :param client: the client which executes the query
-    :param structure_list: the tables which the select queries read from
+    :param table_list: the tables which the select queries read from
     :param query_list: the select queries to combine, one per table
     :param columns_list: the columns to read from each select query. All
         columns of the matching table by default.
@@ -35,8 +35,8 @@ class Union(Query):
 
     def __init__(
         self,
-        client: IClient,
-        structure_list: Sequence[Table],
+        client: Client,
+        table_list: Sequence[Table],
         query_list: Sequence[Select],
         columns_list: Sequence[Sequence[Column] | None] | None,
         is_all: bool,
@@ -46,28 +46,28 @@ class Union(Query):
     ) -> None:
         super().__init__(client=client)
 
-        if not structure_list:
-            raise InvalidArgumentError("empty structure_list")
+        if not table_list:
+            raise InvalidArgumentError("empty table_list")
 
         if not query_list:
             raise InvalidArgumentError("empty query_list")
 
-        if len(query_list) != len(structure_list):
-            raise InvalidArgumentError("query_list and structure_list size mismatch")
+        if len(query_list) != len(table_list):
+            raise InvalidArgumentError("query_list and table_list size mismatch")
 
         for query in query_list:
             if not isinstance(query, Select):
                 raise InvalidArgumentError(f'invalid query of type "{type(query).__name__}"')
 
         if not columns_list:
-            columns_list = [None] * len(structure_list)
+            columns_list = [None] * len(table_list)
 
-        if len(columns_list) != len(structure_list):
-            raise InvalidArgumentError("columns_list and structure_list size mismatch")
+        if len(columns_list) != len(table_list):
+            raise InvalidArgumentError("columns_list and table_list size mismatch")
 
         resolved_columns_list: list[Sequence[Column]] = []
 
-        for given_columns, structure in zip(columns_list, structure_list, strict=True):
+        for given_columns, structure in zip(columns_list, table_list, strict=True):
             columns = given_columns or structure.columns
 
             if not check_cols(columns, structure.columns):
@@ -87,7 +87,7 @@ class Union(Query):
         if not isinstance(is_all, bool):
             raise InvalidArgumentError(f'invalid is_all "{is_all}"')
 
-        self.__structure_list = structure_list
+        self.__table_list = table_list
         self.__query_list = query_list
         self.__columns_list = resolved_columns_list
         self.__is_all = is_all
@@ -96,9 +96,9 @@ class Union(Query):
         self.__condition = condition
 
     @property
-    def structure_list(self) -> Sequence[Table]:
+    def table_list(self) -> Sequence[Table]:
         """Tables which the select queries read from."""
-        return self.__structure_list
+        return self.__table_list
 
     @property
     def query_list(self) -> Sequence[Select]:
@@ -131,6 +131,6 @@ class Union(Query):
         return self.__condition
 
     @override
-    def execute(self, param_tuple: Sequence[Any] | None = None) -> tuple[tuple[Any, ...], ...]:
-        rows: tuple[tuple[Any, ...], ...] = super().execute(param_tuple)
+    def execute(self, parameters: Sequence[Any] | None = None) -> tuple[tuple[Any, ...], ...]:
+        rows: tuple[tuple[Any, ...], ...] = super().execute(parameters)
         return rows

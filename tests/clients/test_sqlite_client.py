@@ -4,13 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from pysqlx.clients import ClientFactory, SqliteThree
+from pysqlx.clients import ClientFactory, SqliteClient
 from pysqlx.exceptions import InvalidArgumentError, PysqlxError, UnsupportedOperationError
 from pysqlx.structures import Database, Schema, Table
 
 from .scenario import run_scenario
 
-param_tuple0 = (
+parameters0 = (
     "some str",
     datetime(1988, 1, 1),
     10.0,
@@ -18,7 +18,7 @@ param_tuple0 = (
     "some text",
 )
 
-param_tuple1 = (
+parameters1 = (
     "some str2",
     datetime(1998, 1, 1),
     10.0,
@@ -29,43 +29,43 @@ param_tuple1 = (
 _std_dir = Path(__file__).parent.parent / "std"
 
 
-def test_sqlite3_client(sqlite3_client: SqliteThree, local_table: Table, tmp_path: Path) -> None:
-    client = sqlite3_client
+def test_sqlite_client(sqlite_client: SqliteClient, local_table: Table, tmp_path: Path) -> None:
+    client = sqlite_client
     table = local_table
 
-    assert not client.is_exists(table).execute()
+    assert not client.exists(table).execute()
 
     client.create(table).execute()
 
-    assert client.is_exists(table).execute()
+    assert client.exists(table).execute()
 
     client.drop(table).execute()
 
-    assert not client.is_exists(table).execute()
+    assert not client.exists(table).execute()
 
     client.create(table).execute()
 
-    assert client.is_exists(table).execute()
+    assert client.exists(table).execute()
 
     assert client.is_empty(table).execute()
 
     query = client.insert(table)
 
-    query.execute(param_tuple=param_tuple0)
+    query.execute(parameters=parameters0)
 
     assert not client.is_empty(table).execute()
 
-    assert client.get_length(table).execute() == 1
+    assert client.count_rows(table).execute() == 1
 
     client.truncate(table).execute()
 
     assert client.is_empty(table).execute()
 
-    assert client.get_length(table).execute() == 0
+    assert client.count_rows(table).execute() == 0
 
-    query.execute_many(param_tuple_list=[param_tuple0] * 5 + [param_tuple1] * 5)
+    query.execute_many(parameters_list=[parameters0] * 5 + [parameters1] * 5)
 
-    assert client.get_length(table).execute() == 10
+    assert client.count_rows(table).execute() == 10
 
     ret = client.select_distinct(table, columns=[table.columns[0]]).execute()
 
@@ -74,25 +74,25 @@ def test_sqlite3_client(sqlite3_client: SqliteThree, local_table: Table, tmp_pat
     ret = client.select(
         table,
         columns=table.columns[1:3],
-        top=3,
+        limit=3,
         ascend_by=[table.columns[0]],
-        condition=table.columns[1] == param_tuple0[1],
+        condition=table.columns[1] == parameters0[1],
     ).execute()
 
     assert ret == (
-        (param_tuple0[1], 10.0),
-        (param_tuple0[1], 10.0),
-        (param_tuple0[1], 10.0),
+        (parameters0[1], 10.0),
+        (parameters0[1], 10.0),
+        (parameters0[1], 10.0),
     )
 
     client.update(
-        table, columns=table.columns[1:3], condition=table.columns[1] == param_tuple0[1]
-    ).execute(param_tuple=(datetime(1990, 1, 1), 20.0))
+        table, columns=table.columns[1:3], condition=table.columns[1] == parameters0[1]
+    ).execute(parameters=(datetime(1990, 1, 1), 20.0))
 
     ret = client.select(
         table,
         columns=table.columns[1:3],
-        top=3,
+        limit=3,
         ascend_by=[table.columns[0]],
         condition=table.columns[1] == datetime(1990, 1, 1),
     ).execute()
@@ -103,12 +103,12 @@ def test_sqlite3_client(sqlite3_client: SqliteThree, local_table: Table, tmp_pat
         (datetime(1990, 1, 1), 20.0),
     )
 
-    assert client.get_length(table).execute() == 10
+    assert client.count_rows(table).execute() == 10
 
     database_name = client.database_name
     assert database_name is not None
 
-    backup_db = ClientFactory.get_sqlite3_client(
+    backup_db = ClientFactory.get_sqlite_client(
         directory_path=str(tmp_path),
         dialect_name=client.dialect_name,
         driver_name="disk",
@@ -138,18 +138,18 @@ def test_sqlite3_client(sqlite3_client: SqliteThree, local_table: Table, tmp_pat
     ret = client.select(
         table,
         columns=table.columns[1:3],
-        top=3,
+        limit=3,
         ascend_by=[table.columns[0]],
         condition=table.columns[1] == datetime(1990, 1, 1),
     ).execute()
 
     assert ret == tuple()
 
-    assert client.get_length(table).execute() == 5
+    assert client.count_rows(table).execute() == 5
 
 
-def test_sqlite3_client_union(sqlite3_client: SqliteThree) -> None:
-    client = sqlite3_client
+def test_sqlite_client_union(sqlite_client: SqliteClient) -> None:
+    client = sqlite_client
 
     table0 = Table(table_name="t0")
     t0_city_col = table0.append_char_string_column(column_name="city")
@@ -162,7 +162,7 @@ def test_sqlite3_client_union(sqlite3_client: SqliteThree) -> None:
     client.create(table1).execute()
 
     client.insert(table0).execute_many(
-        param_tuple_list=(
+        parameters_list=(
             ("Los Angles", "US"),
             ("NYC", "US"),
             ("London", "UK"),
@@ -170,7 +170,7 @@ def test_sqlite3_client_union(sqlite3_client: SqliteThree) -> None:
     )
 
     client.insert(table1).execute_many(
-        param_tuple_list=(
+        parameters_list=(
             ("Miami", "US"),
             ("Paris", "France"),
             ("Cairo", "EG"),
@@ -178,7 +178,7 @@ def test_sqlite3_client_union(sqlite3_client: SqliteThree) -> None:
     )
 
     q = client.union(
-        structure_list=(table0, table1),
+        table_list=(table0, table1),
         query_list=(
             client.select(
                 table0,
@@ -199,7 +199,7 @@ def test_sqlite3_client_union(sqlite3_client: SqliteThree) -> None:
     assert ret == (("Paris",), ("NYC",), ("Miami",), ("Los Angles",), ("London",), ("Cairo",))
 
     q = client.union(
-        structure_list=(table0, table1),
+        table_list=(table0, table1),
         query_list=(
             client.select(
                 table0,
@@ -220,12 +220,12 @@ def test_sqlite3_client_union(sqlite3_client: SqliteThree) -> None:
     assert ret == (("Paris",), ("NYC",), ("Miami",), ("Los Angles",), ("London",), ("Cairo",))
 
 
-def test_sqlite3_scenario(sqlite3_client: SqliteThree) -> None:
-    run_scenario(sqlite3_client)
+def test_sqlite_scenario(sqlite_client: SqliteClient) -> None:
+    run_scenario(sqlite_client)
 
 
-def test_sqlite3_defaults(tmp_path: Path) -> None:
-    memory_client = ClientFactory.get_sqlite3_client()
+def test_sqlite_defaults(tmp_path: Path) -> None:
+    memory_client = ClientFactory.get_sqlite_client()
 
     assert memory_client.dialect_name == "sqlite"
     assert memory_client.database_name is None
@@ -233,7 +233,7 @@ def test_sqlite3_defaults(tmp_path: Path) -> None:
     table = Table(table_name="t")
     table.append_integer_column(column_name="a")
 
-    with ClientFactory.get_sqlite3_client(
+    with ClientFactory.get_sqlite_client(
         directory_path=str(tmp_path), database_name="shop"
     ) as disk_client:
         disk_client.create(table).execute()
@@ -241,29 +241,29 @@ def test_sqlite3_defaults(tmp_path: Path) -> None:
     assert (tmp_path / "shop.db").is_file()
 
 
-def test_sqlite3_invalid_arguments(tmp_path: Path) -> None:
+def test_sqlite_invalid_arguments(tmp_path: Path) -> None:
     with pytest.raises(InvalidArgumentError):
-        ClientFactory.get_sqlite3_client(driver_name="nope")
+        ClientFactory.get_sqlite_client(driver_name="nope")
 
     with pytest.raises(InvalidArgumentError):
-        ClientFactory.get_sqlite3_client(dialect_name="mssql")
+        ClientFactory.get_sqlite_client(dialect_name="mssql")
 
     with pytest.raises(InvalidArgumentError):
-        ClientFactory.get_sqlite3_client(database_name="")
+        ClientFactory.get_sqlite_client(database_name="")
 
     with pytest.raises(InvalidArgumentError):
-        ClientFactory.get_sqlite3_client(driver_name="disk")
+        ClientFactory.get_sqlite_client(driver_name="disk")
 
     with pytest.raises(InvalidArgumentError):
-        ClientFactory.get_sqlite3_client(directory_path=str(tmp_path / "missing"))
+        ClientFactory.get_sqlite_client(directory_path=str(tmp_path / "missing"))
 
     with pytest.raises(InvalidArgumentError):
-        ClientFactory.get_sqlite3_client(directory_path=str(tmp_path))
+        ClientFactory.get_sqlite_client(directory_path=str(tmp_path))
 
     # The name of the database must not lead out of the directory.
     for database_name in ("../outside", "a/b", "..", "."):
         with pytest.raises(InvalidArgumentError):
-            ClientFactory.get_sqlite3_client(
+            ClientFactory.get_sqlite_client(
                 directory_path=str(tmp_path), database_name=database_name
             )
 
@@ -271,11 +271,11 @@ def test_sqlite3_invalid_arguments(tmp_path: Path) -> None:
 
     # The exceptions of the package are also the RuntimeError of earlier versions.
     with pytest.raises(RuntimeError):
-        ClientFactory.get_sqlite3_client(driver_name="nope")
+        ClientFactory.get_sqlite_client(driver_name="nope")
 
 
-def test_sqlite3_close() -> None:
-    client = ClientFactory.get_sqlite3_client()
+def test_sqlite_close() -> None:
+    client = ClientFactory.get_sqlite_client()
     table = Table(table_name="t")
     table.append_integer_column(column_name="a")
 
@@ -290,27 +290,27 @@ def test_sqlite3_close() -> None:
     client.close()
 
     with pytest.raises(PysqlxError):
-        client.get_length(table).execute()
+        client.count_rows(table).execute()
 
 
-def test_sqlite3_close_rolls_back(tmp_path: Path) -> None:
+def test_sqlite_close_rolls_back(tmp_path: Path) -> None:
     table = Table(table_name="t")
     table.append_integer_column(column_name="a")
 
-    def connect() -> SqliteThree:
-        return ClientFactory.get_sqlite3_client(directory_path=str(tmp_path), database_name="db")
+    def connect() -> SqliteClient:
+        return ClientFactory.get_sqlite_client(directory_path=str(tmp_path), database_name="db")
 
     with connect() as client:
         client.create(table).execute()
         client.begin()
-        client.insert(table).execute(param_tuple=(1,))
+        client.insert(table).execute(parameters=(1,))
 
     with connect() as client:
-        assert client.get_length(table).execute() == 0
+        assert client.count_rows(table).execute() == 0
 
 
-def test_sqlite3_unsupported() -> None:
-    client = ClientFactory.get_sqlite3_client()
+def test_sqlite_unsupported() -> None:
+    client = ClientFactory.get_sqlite_client()
     table = Table(table_name="t")
     table.append_integer_column(column_name="a")
 
@@ -318,10 +318,10 @@ def test_sqlite3_unsupported() -> None:
         client.create(Database(database_name="d")).execute()
 
     with pytest.raises(UnsupportedOperationError):
-        client.is_exists(Schema(schema_name="s")).execute()
+        client.exists(Schema(schema_name="s")).execute()
 
     with pytest.raises(UnsupportedOperationError):
-        client.create(table).execute_many(param_tuple_list=[(1,)])
+        client.create(table).execute_many(parameters_list=[(1,)])
 
     with pytest.raises(UnsupportedOperationError):
-        client.select(table).execute_many(param_tuple_list=[(1,)])
+        client.select(table).execute_many(parameters_list=[(1,)])

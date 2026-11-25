@@ -5,7 +5,7 @@ from typing import Any, cast
 
 from .._compat import override
 from ..exceptions import UnsupportedOperationError
-from ..queries import Create, Drop, IsExists, Reflect, Truncate
+from ..queries import Create, Drop, Exists, Reflect, Truncate
 from ..structures import (
     BinaryColumn,
     BooleanColumn,
@@ -20,10 +20,10 @@ from ..structures import (
     Table,
     TextColumn,
 )
-from .i_dialect import IDialect
+from .dialect import Dialect
 
 
-class Sqlite(IDialect):
+class Sqlite(Dialect):
     """Dialect of SQLite.
 
     SQLite has neither databases nor schemas to create, so the queries which
@@ -53,7 +53,7 @@ class Sqlite(IDialect):
             for x in (
                 self.quote_identifier(column.column_name),
                 type_string,
-                "NOT NULL" if column.is_prevent_null else "",
+                "NOT NULL" if column.is_required else "",
                 "PRIMARY KEY" if is_inline_key else "",
                 "AUTOINCREMENT" if column.is_identity else "",
                 f"DEFAULT {column.default_value}" if column.default_value is not None else "",
@@ -133,30 +133,22 @@ class Sqlite(IDialect):
         raise UnsupportedOperationError("schema dropping is not supported in SQLite")
 
     @override
-    def get_IsExists_database_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_database_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         raise UnsupportedOperationError("database checks are not supported in SQLite")
 
     @override
-    def get_IsExists_schema_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_schema_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         raise UnsupportedOperationError("schema checks are not supported in SQLite")
 
     @override
-    def get_IsExists_table_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_table_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         table = cast(Table, query.structure)
 
         name = self.get_literal_string(table.table_name)
         return f"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name={name}"
 
     @override
-    def get_IsExists_index_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_index_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         index = cast(Index, query.structure)
 
         name = self.get_literal_string(index.index_name)
@@ -170,11 +162,11 @@ class Sqlite(IDialect):
     def get_Truncate_table_string(
         self, query: Truncate, parameters: list[Any] | None = None
     ) -> str:
-        return f"DELETE FROM {self.get_table_qualifier(query.structure)}"
+        return f"DELETE FROM {self.get_table_qualifier(query.table)}"
 
     @override
     def get_Reflect_table_string(self, query: Reflect, parameters: list[Any] | None = None) -> str:
-        name = self.get_literal_string(query.structure.table_name)
+        name = self.get_literal_string(query.table.table_name)
 
         return f"""SELECT p.name, p.type, p."notnull", p.dflt_value, p.pk,
 (SELECT sql FROM sqlite_master WHERE type='table' AND name={name})
@@ -184,7 +176,7 @@ FROM pragma_table_info({name}) p ORDER BY p.cid"""
     def get_reflected_table(self, query: Reflect, rows: Sequence[Sequence[Any]]) -> Table:
         table = self._get_empty_table(query, rows)
 
-        for column_name, type_string, is_prevent_null, default_value, key_index, sql in rows:
+        for column_name, type_string, is_required, default_value, key_index, sql in rows:
             type_name, numbers = self._parse_type(type_string)
             is_primary_key = bool(key_index)
 
@@ -230,8 +222,15 @@ FROM pragma_table_info({name}) p ORDER BY p.cid"""
                     and "AUTOINCREMENT" in str(sql).upper()
                 ),
                 is_primary_key=is_primary_key,
-                is_prevent_null=bool(is_prevent_null),
+                is_required=bool(is_required),
                 **arguments,
             )
 
         return table
+
+    @override
+    def get_foreign_keys_string(self, table: Table) -> str:
+        name = self.get_literal_string(table.table_name)
+
+        return f"""SELECT id, "from", NULL, "table", "to"
+FROM pragma_foreign_key_list({name}) ORDER BY id, seq"""

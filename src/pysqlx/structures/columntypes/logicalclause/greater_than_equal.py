@@ -8,25 +8,26 @@ from ...._compat import override
 from .clause import Clause
 
 if TYPE_CHECKING:
+    from ..aggregate import Aggregate
     from ..column import Column
 
 
 class GreaterThanEqual(Clause):
     """Clause which holds when a column is greater than or equal to a value.
 
-    :param lhs: the column on the left hand side
+    :param lhs: the column, or the aggregate, on the left hand side
     :param rhs: the value, or the column, on the right hand side
     """
 
-    def __init__(self, lhs: Column, rhs: Any) -> None:
+    def __init__(self, lhs: Column | Aggregate, rhs: Any) -> None:
         super().__init__()
 
         self.__lhs = lhs
         self.__rhs = rhs
 
     @property
-    def lhs(self) -> Column:
-        """Column on the left hand side."""
+    def lhs(self) -> Column | Aggregate:
+        """Column, or aggregate, on the left hand side."""
         return self.__lhs
 
     @property

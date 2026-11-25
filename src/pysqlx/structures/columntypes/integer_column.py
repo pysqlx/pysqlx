@@ -28,7 +28,7 @@ class IntegerColumn(Column):
     :param is_identity: whether the database generates the values of the
         column
     :param is_primary_key: whether the column is part of the primary key
-    :param is_prevent_null: whether the column rejects null values
+    :param is_required: whether the column rejects null values
     :raises InvalidArgumentError: if an argument has an invalid type or value
     """
 
@@ -40,7 +40,7 @@ class IntegerColumn(Column):
         default_value: Any,
         is_identity: bool,
         is_primary_key: bool,
-        is_prevent_null: bool,
+        is_required: bool,
     ) -> None:
         super().__init__(
             column_name=column_name,
@@ -48,7 +48,7 @@ class IntegerColumn(Column):
             default_value=default_value,
             is_identity=is_identity,
             is_primary_key=is_primary_key,
-            is_prevent_null=is_prevent_null,
+            is_required=is_required,
         )
 
         if not (isinstance(n_bytes, int)):

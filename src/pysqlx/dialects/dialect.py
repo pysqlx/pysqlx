@@ -8,13 +8,13 @@ from typing import Any, cast
 
 from ..exceptions import InvalidArgumentError, UnsupportedOperationError
 from ..queries import (
+    CountRows,
     Create,
     Delete,
     Drop,
-    GetLength,
+    Exists,
     Insert,
     IsEmpty,
-    IsExists,
     Query,
     Reflect,
     Select,
@@ -61,7 +61,7 @@ from ..structures.columntypes.logicalclause import (
 )
 
 
-class IDialect(ABC):
+class Dialect(ABC):
     """Interface of the SQL dialects.
 
     A dialect turns columns, clauses and queries into SQL strings. This class
@@ -122,10 +122,27 @@ class IDialect(ABC):
         """
         name = self.quote_identifier(column.column_name)
 
-        if is_qualified:
-            return self.get_table_qualifier(column.table) + "." + name
+        if not is_qualified:
+            return name
 
-        return name
+        if column.table.alias_name:
+            return self.quote_identifier(column.table.alias_name) + "." + name
+
+        return self.get_table_qualifier(column.table) + "." + name
+
+    def get_table_reference(self, table: Table) -> str:
+        """Get what names a table after ``FROM`` or ``JOIN`` in a select query.
+
+        :param table: the table, or an alias of a table
+        :returns: the qualified name of the table, followed by its alias if
+            it has one
+        """
+        qualifier = self.get_table_qualifier(table)
+
+        if table.alias_name:
+            return qualifier + " " + self.quote_identifier(table.alias_name)
+
+        return qualifier
 
     def get_select_item_string(self, item: Column | Aggregate, is_qualified: bool = False) -> str:
         """Get the SQL of a column or an aggregate which a query reads.
@@ -190,8 +207,8 @@ class IDialect(ABC):
         if isinstance(val, Clause):
             return "(" + self.get_clause_string(val, parameters, is_qualified) + ")"
 
-        if isinstance(val, Column):
-            return self.get_column_qualifier(val, is_qualified)
+        if isinstance(val, (Column, Aggregate)):
+            return self.get_select_item_string(val, is_qualified)
 
         if parameters is None:
             return self.get_literal_string(val)
@@ -205,7 +222,7 @@ class IDialect(ABC):
             for x in (
                 self.quote_identifier(column.column_name),
                 type_string,
-                "NOT NULL" if column.is_prevent_null else "",
+                "NOT NULL" if column.is_required else "",
                 self._get_identity_string() if column.is_identity else "",
                 f"DEFAULT {column.default_value}" if column.default_value is not None else "",
             )
@@ -233,7 +250,7 @@ class IDialect(ABC):
         constraints += [
             "FOREIGN KEY ({}) REFERENCES {} ({})".format(
                 ", ".join(self.get_column_qualifier(col) for col in foreign_key.columns),
-                self.get_table_qualifier(foreign_key.reference_columns[0].table),
+                self.get_table_qualifier(foreign_key.reference_table),
                 ", ".join(self.get_column_qualifier(col) for col in foreign_key.reference_columns),
             )
             for foreign_key in table.foreign_keys
@@ -774,7 +791,7 @@ class IDialect(ABC):
         return " ".join(
             (
                 "DELETE FROM",
-                self.get_table_qualifier(query.structure),
+                self.get_table_qualifier(query.table),
                 "WHERE",
                 self.get_clause_string(query.condition, parameters),
             )
@@ -828,8 +845,8 @@ class IDialect(ABC):
 
         return f"DROP INDEX {self.quote_identifier(index.index_name)}"
 
-    def get_GetLength_table_string(
-        self, query: GetLength, parameters: list[Any] | None = None
+    def get_CountRows_table_string(
+        self, query: CountRows, parameters: list[Any] | None = None
     ) -> str:
         """Get the SQL which counts the rows of a table.
 
@@ -838,7 +855,7 @@ class IDialect(ABC):
             conditions. Without it, the values are written into the SQL.
         :returns: the SQL statement
         """
-        return f"SELECT COUNT(*) FROM {self.get_table_qualifier(query.structure)}"
+        return f"SELECT COUNT(*) FROM {self.get_table_qualifier(query.table)}"
 
     def get_Insert_table_string(self, query: Insert, parameters: list[Any] | None = None) -> str:
         """Get the SQL which adds a row to a table.
@@ -851,7 +868,7 @@ class IDialect(ABC):
         col_names = tuple(self.get_column_qualifier(col) for col in query.columns)
 
         return "INSERT INTO {} ({}) VALUES ({})".format(
-            self.get_table_qualifier(query.structure),
+            self.get_table_qualifier(query.table),
             ",\n".join(col_names),
             ", ".join([self.placeholder] * len(col_names)),
         )
@@ -864,12 +881,10 @@ class IDialect(ABC):
             conditions. Without it, the values are written into the SQL.
         :returns: the SQL statement
         """
-        return f"SELECT COUNT(*) FROM {self.get_table_qualifier(query.structure)}"
+        return f"SELECT COUNT(*) FROM {self.get_table_qualifier(query.table)}"
 
     @abstractmethod
-    def get_IsExists_database_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_database_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         """Get the SQL which gives 1 when a database exists and 0 otherwise.
 
         :param query: the query
@@ -879,9 +894,7 @@ class IDialect(ABC):
         """
 
     @abstractmethod
-    def get_IsExists_schema_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_schema_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         """Get the SQL which gives 1 when a schema exists and 0 otherwise.
 
         :param query: the query
@@ -891,9 +904,7 @@ class IDialect(ABC):
         """
 
     @abstractmethod
-    def get_IsExists_table_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_table_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         """Get the SQL which gives 1 when a table exists and 0 otherwise.
 
         :param query: the query
@@ -903,9 +914,7 @@ class IDialect(ABC):
         """
 
     @abstractmethod
-    def get_IsExists_index_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_index_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         """Get the SQL which gives 1 when an index exists and 0 otherwise.
 
         :param query: the query
@@ -923,6 +932,40 @@ class IDialect(ABC):
         :returns: the SQL statement, whose rows :py:meth:`get_reflected_table`
             understands
         """
+
+    @abstractmethod
+    def get_foreign_keys_string(self, table: Table) -> str:
+        """Get the SQL which reads the foreign keys of a table.
+
+        Each row holds the name of a foreign key, one of its columns, the
+        schema of the table it refers to, or null when it is the schema of
+        the table itself, the name of that table and the column referred to.
+        The rows of a foreign key follow each other, in the order of its
+        columns.
+
+        :param table: the table
+        :returns: the SQL statement
+        """
+
+    def get_reference_table(
+        self,
+        table: Table,
+        schema_name: str | None,
+        table_name: str,
+    ) -> Table:
+        """Create the table which a foreign key of a table refers to.
+
+        :param table: the table which has the foreign key
+        :param schema_name: the schema of the table referred to, as given by
+            :py:meth:`get_foreign_keys_string`
+        :param table_name: the name of the table referred to
+        :returns: the table referred to, without columns
+        """
+        return Table(
+            table_name=table_name,
+            database=table.database,
+            schema=Schema(schema_name=schema_name) if schema_name else table.schema,
+        )
 
     def _get_information_schema_string(
         self,
@@ -993,14 +1036,14 @@ ORDER BY c.ordinal_position"""
                 default_value=default_value,
                 is_identity=bool(is_identity),
                 is_primary_key=bool(key_count),
-                is_prevent_null=str(is_nullable).upper() == "NO",
+                is_required=str(is_nullable).upper() == "NO",
                 **arguments,
             )
 
         return table
 
     def _get_empty_table(self, query: Reflect, rows: Sequence[Sequence[Any]]) -> Table:
-        source = query.structure
+        source = query.table
 
         if not rows:
             raise InvalidArgumentError(f'table "{source.table_name}" does not exist')
@@ -1015,7 +1058,7 @@ ORDER BY c.ordinal_position"""
         default_value: Any,
         is_identity: bool,
         is_primary_key: bool,
-        is_prevent_null: bool,
+        is_required: bool,
         size: int | None = None,
         precision: int | None = None,
         scale: int | None = None,
@@ -1030,7 +1073,7 @@ ORDER BY c.ordinal_position"""
             # Identity and key columns have no default value of their own.
             "default_value": None if (is_identity or is_primary_key) else default_value,
             "is_primary_key": is_primary_key,
-            "is_prevent_null": is_prevent_null,
+            "is_required": is_required,
         }
 
         if kind == "char":
@@ -1069,15 +1112,15 @@ ORDER BY c.ordinal_position"""
 
     def _get_limit_strings(
         self,
-        top: int | None,
+        limit: int | None,
         offset: int | None,
         is_ordered: bool,
     ) -> tuple[str, str]:
         """Get what limits the rows, before the columns and at the end."""
         limit_ar = []
 
-        if top is not None:
-            limit_ar.append(f"LIMIT {top}")
+        if limit is not None:
+            limit_ar.append(f"LIMIT {limit}")
         elif offset is not None:
             limit_ar.append(self._get_no_limit_string())
 
@@ -1118,7 +1161,7 @@ ORDER BY c.ordinal_position"""
         is_qualified = bool(query.joins)
         order_ar = self._get_order_by_strings(query.ascend_by, query.descend_by, is_qualified)
         limit_prefix, limit_suffix = self._get_limit_strings(
-            query.top, query.offset, bool(order_ar)
+            query.limit, query.offset, bool(order_ar)
         )
 
         sql_ar = [
@@ -1126,13 +1169,13 @@ ORDER BY c.ordinal_position"""
             limit_prefix,
             ",\n".join(self.get_select_item_string(item, is_qualified) for item in query.columns),
             "FROM",
-            self.get_table_qualifier(query.structure),
+            self.get_table_reference(query.table),
         ]
 
         for join in query.joins or ():
             sql_ar += [
                 f"{join.kind.upper()} JOIN",
-                self.get_table_qualifier(join.table),
+                self.get_table_reference(join.table),
                 "ON",
                 self.get_clause_string(join.condition, parameters, is_qualified),
             ]
@@ -1147,6 +1190,12 @@ ORDER BY c.ordinal_position"""
             sql_ar += [
                 "GROUP BY",
                 ", ".join(self.get_column_qualifier(col, is_qualified) for col in query.group_by),
+            ]
+
+        if query.having:
+            sql_ar += [
+                "HAVING",
+                self.get_clause_string(query.having, parameters, is_qualified),
             ]
 
         if order_ar:
@@ -1173,7 +1222,7 @@ ORDER BY c.ordinal_position"""
             "SELECT DISTINCT",
             ", ".join(self.get_column_qualifier(col) for col in query.columns),
             "FROM",
-            self.get_table_qualifier(query.structure),
+            self.get_table_qualifier(query.table),
         ]
 
         if query.condition:
@@ -1202,7 +1251,7 @@ ORDER BY c.ordinal_position"""
             conditions. Without it, the values are written into the SQL.
         :returns: the SQL statement
         """
-        return f"TRUNCATE TABLE {self.get_table_qualifier(query.structure)}"
+        return f"TRUNCATE TABLE {self.get_table_qualifier(query.table)}"
 
     def get_Union_table_string(self, query: Union, parameters: list[Any] | None = None) -> str:
         """Get the SQL which combines the rows of several select queries.
@@ -1224,7 +1273,7 @@ ORDER BY c.ordinal_position"""
                     ]
                 )
                 for columns, select, table in zip(
-                    query.columns_list, query.query_list, query.structure_list, strict=True
+                    query.columns_list, query.query_list, query.table_list, strict=True
                 )
             ]
         ) + "\n"
@@ -1250,7 +1299,7 @@ ORDER BY c.ordinal_position"""
         col_names = tuple(self.get_column_qualifier(col) for col in query.columns)
 
         return "UPDATE {}\nSET {}\nWHERE {}".format(
-            self.get_table_qualifier(query.structure),
+            self.get_table_qualifier(query.table),
             ", ".join(col + "=" + self.placeholder for col in col_names),
             self.get_clause_string(query.condition, parameters),
         )
@@ -1279,9 +1328,7 @@ ORDER BY c.ordinal_position"""
         :raises UnsupportedOperationError: if the dialect does not support
             the query for its kind of structure
         """
-        return self._get_structure_string(
-            "Delete", query.structure.structure_name, query, parameters
-        )
+        return self._get_structure_string("Delete", "table", query, parameters)
 
     def get_Drop_string(self, query: Drop, parameters: list[Any] | None = None) -> str:
         """Get the SQL of a drop query.
@@ -1295,7 +1342,7 @@ ORDER BY c.ordinal_position"""
         """
         return self._get_structure_string("Drop", query.structure.structure_name, query, parameters)
 
-    def get_GetLength_string(self, query: GetLength, parameters: list[Any] | None = None) -> str:
+    def get_CountRows_string(self, query: CountRows, parameters: list[Any] | None = None) -> str:
         """Get the SQL of a row count query.
 
         :param query: the query
@@ -1305,9 +1352,7 @@ ORDER BY c.ordinal_position"""
         :raises UnsupportedOperationError: if the dialect does not support
             the query for its kind of structure
         """
-        return self._get_structure_string(
-            "GetLength", query.structure.structure_name, query, parameters
-        )
+        return self._get_structure_string("CountRows", "table", query, parameters)
 
     def get_Insert_string(self, query: Insert, parameters: list[Any] | None = None) -> str:
         """Get the SQL of an insert query.
@@ -1319,9 +1364,7 @@ ORDER BY c.ordinal_position"""
         :raises UnsupportedOperationError: if the dialect does not support
             the query for its kind of structure
         """
-        return self._get_structure_string(
-            "Insert", query.structure.structure_name, query, parameters
-        )
+        return self._get_structure_string("Insert", "table", query, parameters)
 
     def get_IsEmpty_string(self, query: IsEmpty, parameters: list[Any] | None = None) -> str:
         """Get the SQL of an emptiness query.
@@ -1333,11 +1376,9 @@ ORDER BY c.ordinal_position"""
         :raises UnsupportedOperationError: if the dialect does not support
             the query for its kind of structure
         """
-        return self._get_structure_string(
-            "IsEmpty", query.structure.structure_name, query, parameters
-        )
+        return self._get_structure_string("IsEmpty", "table", query, parameters)
 
-    def get_IsExists_string(self, query: IsExists, parameters: list[Any] | None = None) -> str:
+    def get_Exists_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         """Get the SQL of an existence query.
 
         :param query: the query
@@ -1348,7 +1389,7 @@ ORDER BY c.ordinal_position"""
             the query for its kind of structure
         """
         return self._get_structure_string(
-            "IsExists", query.structure.structure_name, query, parameters
+            "Exists", query.structure.structure_name, query, parameters
         )
 
     def get_Reflect_string(self, query: Reflect, parameters: list[Any] | None = None) -> str:
@@ -1358,9 +1399,7 @@ ORDER BY c.ordinal_position"""
         :param parameters: unused, as the query has no condition
         :returns: the SQL statement
         """
-        return self._get_structure_string(
-            "Reflect", query.structure.structure_name, query, parameters
-        )
+        return self._get_structure_string("Reflect", "table", query, parameters)
 
     def get_Select_string(self, query: Select, parameters: list[Any] | None = None) -> str:
         """Get the SQL of a select query.
@@ -1372,9 +1411,7 @@ ORDER BY c.ordinal_position"""
         :raises UnsupportedOperationError: if the dialect does not support
             the query for its kind of structure
         """
-        return self._get_structure_string(
-            "Select", query.structure.structure_name, query, parameters
-        )
+        return self._get_structure_string("Select", "table", query, parameters)
 
     def get_SelectDistinct_string(
         self, query: SelectDistinct, parameters: list[Any] | None = None
@@ -1388,9 +1425,7 @@ ORDER BY c.ordinal_position"""
         :raises UnsupportedOperationError: if the dialect does not support
             the query for its kind of structure
         """
-        return self._get_structure_string(
-            "SelectDistinct", query.structure.structure_name, query, parameters
-        )
+        return self._get_structure_string("SelectDistinct", "table", query, parameters)
 
     def get_Truncate_string(self, query: Truncate, parameters: list[Any] | None = None) -> str:
         """Get the SQL of a truncate query.
@@ -1402,9 +1437,7 @@ ORDER BY c.ordinal_position"""
         :raises UnsupportedOperationError: if the dialect does not support
             the query for its kind of structure
         """
-        return self._get_structure_string(
-            "Truncate", query.structure.structure_name, query, parameters
-        )
+        return self._get_structure_string("Truncate", "table", query, parameters)
 
     def get_Update_string(self, query: Update, parameters: list[Any] | None = None) -> str:
         """Get the SQL of an update query.
@@ -1416,9 +1449,7 @@ ORDER BY c.ordinal_position"""
         :raises UnsupportedOperationError: if the dialect does not support
             the query for its kind of structure
         """
-        return self._get_structure_string(
-            "Update", query.structure.structure_name, query, parameters
-        )
+        return self._get_structure_string("Update", "table", query, parameters)
 
     def get_Union_string(self, query: Union, parameters: list[Any] | None = None) -> str:
         """Get the SQL of a union query.
@@ -1431,7 +1462,7 @@ ORDER BY c.ordinal_position"""
             the query for its kind of structure
         """
         return self._get_structure_string(
-            "Union", query.structure_list[0].structure_name, query, parameters
+            "Union", query.table_list[0].structure_name, query, parameters
         )
 
     def get_query_string(self, query: Query, parameters: list[Any] | None = None) -> str:

@@ -113,8 +113,8 @@ adds each value of a condition to the list and writes a placeholder, which is
 what the clients execute. Without the list, it writes the values into the
 SQL, which is what ``get_query_string()`` returns for reading.
 
-:py:class:`~pysqlx.dialects.IDialect` writes the SQL which the databases have
-in common, and :py:class:`~pysqlx.clients.IClient` executes every query. A
+:py:class:`~pysqlx.dialects.Dialect` writes the SQL which the databases have
+in common, and :py:class:`~pysqlx.clients.Client` executes every query. A
 dialect or a client only defines what its database does differently.
 
 Adding a query
@@ -124,9 +124,9 @@ Adding a query
    :py:class:`~pysqlx.queries.Query`, and export it from the package.
    Override ``execute()`` to declare what the query returns.
 2. Add the methods ``get_<Query>_<structure>_string()`` and
-   ``get_<Query>_string()`` to :py:class:`~pysqlx.dialects.IDialect`, and
+   ``get_<Query>_string()`` to :py:class:`~pysqlx.dialects.Dialect`, and
    override the former in the dialects whose SQL differs.
-3. Add ``_execute_<Query>()`` to :py:class:`~pysqlx.clients.IClient`, and a
+3. Add ``_execute_<Query>()`` to :py:class:`~pysqlx.clients.Client`, and a
    method which creates the query. Add ``_execute_many_<Query>()`` if the
    query can be executed with several sets of parameters.
 4. Add the query to the cases of ``tests/dialects/cases.py`` and to the
@@ -136,10 +136,10 @@ Adding a query
 Adding a database
 -----------------
 
-1. Add a dialect derived from :py:class:`~pysqlx.dialects.IDialect`, which
+1. Add a dialect derived from :py:class:`~pysqlx.dialects.Dialect`, which
    defines how names are quoted, the types of the columns and the queries
    which look structures up.
-2. Add a client derived from :py:class:`~pysqlx.clients.IClient`, which
+2. Add a client derived from :py:class:`~pysqlx.clients.Client`, which
    opens the connection and starts a transaction. Import the library of the
    database inside the client, so that the package works without it, and add
    the library as an optional dependency.

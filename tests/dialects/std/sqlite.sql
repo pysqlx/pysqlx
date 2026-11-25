@@ -112,6 +112,25 @@ SUM([orders].[total]) FROM [orders] LEFT JOIN [customers] ON [orders].[customer_
 -- select_join [10]
 SELECT [customers].[full name],
 SUM([orders].[total]) FROM [orders] LEFT JOIN [customers] ON [orders].[customer_id] = [customers].[id] WHERE [orders].[total] > ? GROUP BY [customers].[full name] ORDER BY [customers].[full name] DESC LIMIT 3
+-- select_having
+SELECT [customer_id],
+SUM([total]) FROM [orders] WHERE [total] > 1 GROUP BY [customer_id] HAVING ((SUM([total]) >= 10) AND (COUNT(*) != 2)) AND (AVG([total]) BETWEEN 1 AND 5) ORDER BY [customer_id] ASC
+-- select_having [1, 10, 2, 1, 5]
+SELECT [customer_id],
+SUM([total]) FROM [orders] WHERE [total] > ? GROUP BY [customer_id] HAVING ((SUM([total]) >= ?) AND (COUNT(*) != ?)) AND (AVG([total]) BETWEEN ? AND ?) ORDER BY [customer_id] ASC
+-- select_alias
+SELECT [orders].[id],
+[o 2].[id] FROM [orders] INNER JOIN [orders] [o 2] ON ([orders].[customer_id] = [o 2].[customer_id]) AND ([orders].[total] < [o 2].[total])
+-- select_only_alias
+SELECT [id] FROM [orders] [o 2] LIMIT 1
+-- reflect
+SELECT p.name, p.type, p."notnull", p.dflt_value, p.pk,
+(SELECT sql FROM sqlite_master WHERE type='table' AND name='customers')
+FROM pragma_table_info('customers') p ORDER BY p.cid
+-- reflect_plain
+SELECT p.name, p.type, p."notnull", p.dflt_value, p.pk,
+(SELECT sql FROM sqlite_master WHERE type='table' AND name='orders')
+FROM pragma_table_info('orders') p ORDER BY p.cid
 -- select_distinct
 SELECT DISTINCT [full name], [code] FROM [customers] WHERE [code] != 'x' ORDER BY [full name] ASC, [code] DESC
 -- select_distinct ['x']
@@ -136,3 +155,9 @@ SELECT [customer_id] FROM [orders] WHERE [total] > ?
 ) [orders]
 ORDER BY
 [id] DESC
+-- foreign keys of orders
+SELECT id, "from", NULL, "table", "to"
+FROM pragma_foreign_key_list('orders') ORDER BY id, seq
+-- foreign keys of customers
+SELECT id, "from", NULL, "table", "to"
+FROM pragma_foreign_key_list('customers') ORDER BY id, seq

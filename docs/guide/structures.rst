@@ -77,7 +77,7 @@ All of them take the name of the column and these optional arguments:
 
 * ``default_value``, the default value of the column
 * ``is_primary_key``, whether the column is part of the primary key
-* ``is_prevent_null``, whether the column rejects null values
+* ``is_required``, whether the column rejects null values
 
 An identity column gets its values from the database. Identity and primary
 key columns always reject null values and cannot have a default value.
@@ -129,7 +129,7 @@ rows with the same values in its columns.
 
     client.create(index).execute()
 
-    print(client.is_exists(index).execute())
+    print(client.exists(index).execute())
     # True
 
     client.drop(index).execute()
@@ -151,8 +151,18 @@ instead of describing them:
 
     rows = client.select(orders, condition=customer_id == 1).execute()
 
-Foreign keys are not read. A column whose type the package does not know
-raises :py:class:`~pysqlx.exceptions.UnsupportedOperationError`.
+The foreign keys of the table are read as well, together with the columns of
+the tables they refer to:
+
+.. code-block:: python
+
+    foreign_key = orders.foreign_keys[0]
+
+    print(foreign_key.reference_table.table_name)
+    # customers
+
+A column whose type the package does not know raises
+:py:class:`~pysqlx.exceptions.UnsupportedOperationError`.
 
 Databases and schemas
 ---------------------
@@ -166,7 +176,7 @@ looked for like tables:
 
     shop = Database(database_name="shop")
 
-    if not client.is_exists(shop).execute():
+    if not client.exists(shop).execute():
         client.create(shop).execute()
 
     client.create(Schema(schema_name="sales")).execute()

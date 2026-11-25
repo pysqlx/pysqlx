@@ -4,7 +4,13 @@ from urllib.parse import SplitResult, unquote, urlsplit
 
 import pytest
 
-from pysqlx.clients import ClientFactory, Psycopg, Pymysql, Pyodbc, SqliteThree
+from pysqlx.clients import (
+    ClientFactory,
+    MySqlClient,
+    PostgreSqlClient,
+    SqliteClient,
+    SqlServerClient,
+)
 from pysqlx.dialects import Sqlite as SqliteDialect
 from pysqlx.structures import Table
 
@@ -18,8 +24,8 @@ def sqlite_dialect() -> SqliteDialect:
 
 
 @pytest.fixture(scope="function")
-def sqlite3_client() -> Iterator[SqliteThree]:
-    client = ClientFactory.get_sqlite3_client(database_name=_default_database_name)
+def sqlite_client() -> Iterator[SqliteClient]:
+    client = ClientFactory.get_sqlite_client(database_name=_default_database_name)
 
     yield client
 
@@ -40,10 +46,10 @@ def _server(variable_name: str) -> SplitResult:
 
 
 @pytest.fixture(scope="function")
-def psycopg_client() -> Iterator[Psycopg]:
+def postgresql_client() -> Iterator[PostgreSqlClient]:
     server = _server("PYSQLX_TEST_POSTGRESQL")
 
-    client = ClientFactory.get_psycopg_client(
+    client = ClientFactory.get_postgresql_client(
         server_address=server.hostname or "",
         user_name=unquote(server.username or ""),
         user_pass=unquote(server.password or ""),
@@ -57,10 +63,10 @@ def psycopg_client() -> Iterator[Psycopg]:
 
 
 @pytest.fixture(scope="function")
-def pymysql_client() -> Iterator[Pymysql]:
+def mysql_client() -> Iterator[MySqlClient]:
     server = _server("PYSQLX_TEST_MYSQL")
 
-    client = ClientFactory.get_pymysql_client(
+    client = ClientFactory.get_mysql_client(
         server_address=server.hostname or "",
         user_name=unquote(server.username or ""),
         user_pass=unquote(server.password or ""),
@@ -74,10 +80,10 @@ def pymysql_client() -> Iterator[Pymysql]:
 
 
 @pytest.fixture(scope="function")
-def pyodbc_client() -> Iterator[Pyodbc]:
+def sql_server_client() -> Iterator[SqlServerClient]:
     server = _server("PYSQLX_TEST_MSSQL")
 
-    client = ClientFactory.get_pyodbc_client(
+    client = ClientFactory.get_sql_server_client(
         server_address=server.hostname or "",
         user_name=unquote(server.username or ""),
         user_pass=unquote(server.password or ""),
@@ -101,15 +107,15 @@ def local_table() -> Table:
         is_fixed=False,
         size=255,
         is_primary_key=False,
-        is_prevent_null=False,
+        is_required=False,
     )
 
     test_table.append_datetime_column(
-        column_name="datetime_column", is_primary_key=False, is_prevent_null=False
+        column_name="datetime_column", is_primary_key=False, is_required=False
     )
 
     test_table.append_float_column(
-        column_name="float_column", is_double=True, is_primary_key=False, is_prevent_null=False
+        column_name="float_column", is_double=True, is_primary_key=False, is_required=False
     )
 
     test_table.append_integer_column(
@@ -117,11 +123,11 @@ def local_table() -> Table:
         n_bytes=4,
         is_identity=False,
         is_primary_key=False,
-        is_prevent_null=False,
+        is_required=False,
     )
 
     test_table.append_text_column(
-        column_name="text_column", is_unicode=False, is_primary_key=False, is_prevent_null=False
+        column_name="text_column", is_unicode=False, is_primary_key=False, is_required=False
     )
 
     return test_table

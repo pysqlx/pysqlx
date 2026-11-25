@@ -5,7 +5,7 @@ from typing import Any, cast
 
 from .._compat import override
 from ..exceptions import InvalidArgumentError
-from ..queries import Drop, IsExists, Reflect
+from ..queries import Drop, Exists, Reflect
 from ..structures import (
     BinaryColumn,
     BooleanColumn,
@@ -21,7 +21,7 @@ from ..structures import (
     Table,
     TextColumn,
 )
-from .i_dialect import IDialect
+from .dialect import Dialect
 
 _int_name_dict = {
     1: "tinyint",
@@ -31,7 +31,7 @@ _int_name_dict = {
 }
 
 
-class MsSql(IDialect):
+class MsSql(Dialect):
     """Dialect of Microsoft SQL Server."""
 
     def __init__(self) -> None:
@@ -133,9 +133,7 @@ class MsSql(IDialect):
         return f"DROP INDEX {name} ON {scope}"
 
     @override
-    def get_IsExists_database_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_database_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         database = cast(Database, query.structure)
 
         return f"""if exists (
@@ -146,9 +144,7 @@ else
     SELECT 0 AS result;"""
 
     @override
-    def get_IsExists_schema_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_schema_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         schema = cast(Schema, query.structure)
 
         return f"""if exists (
@@ -159,9 +155,7 @@ else
     SELECT 0 AS result;"""
 
     @override
-    def get_IsExists_table_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_table_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         table = cast(Table, query.structure)
 
         return f"""if exists (
@@ -172,9 +166,7 @@ else
     SELECT 0 AS result;"""
 
     @override
-    def get_IsExists_index_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_index_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         index = cast(Index, query.structure)
 
         return f"""if exists (
@@ -187,26 +179,26 @@ else
     @override
     def _get_limit_strings(
         self,
-        top: int | None,
+        limit: int | None,
         offset: int | None,
         is_ordered: bool,
     ) -> tuple[str, str]:
         if offset is None:
-            return ("" if top is None else f"TOP ({top})"), ""
+            return ("" if limit is None else f"TOP ({limit})"), ""
 
         if not is_ordered:
             raise InvalidArgumentError("SQL Server needs ascend_by or descend_by to use offset")
 
         suffix = f"OFFSET {offset} ROWS"
 
-        if top is not None:
-            suffix += f" FETCH NEXT {top} ROWS ONLY"
+        if limit is not None:
+            suffix += f" FETCH NEXT {limit} ROWS ONLY"
 
         return "", suffix
 
     @override
     def get_Reflect_table_string(self, query: Reflect, parameters: list[Any] | None = None) -> str:
-        table = query.structure
+        table = query.table
 
         return self._get_information_schema_string(
             table,
@@ -271,3 +263,21 @@ else
             return {"kind": "binary"}
 
         return super()._get_reflected_type(data_type, size, precision, column_type)
+
+    @override
+    def get_foreign_keys_string(self, table: Table) -> str:
+        name = self.get_literal_string(self.get_table_qualifier(table))
+
+        return f"""SELECT fk.name, pc.name,
+CASE WHEN rt.schema_id = pt.schema_id THEN NULL ELSE SCHEMA_NAME(rt.schema_id) END,
+rt.name, rc.name
+FROM sys.foreign_keys fk
+JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id
+JOIN sys.tables pt ON pt.object_id = fk.parent_object_id
+JOIN sys.columns pc ON pc.object_id = fkc.parent_object_id
+AND pc.column_id = fkc.parent_column_id
+JOIN sys.tables rt ON rt.object_id = fkc.referenced_object_id
+JOIN sys.columns rc ON rc.object_id = fkc.referenced_object_id
+AND rc.column_id = fkc.referenced_column_id
+WHERE fk.parent_object_id = OBJECT_ID({name})
+ORDER BY fk.name, fkc.constraint_column_id"""

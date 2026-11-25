@@ -40,14 +40,14 @@ them into the SQL of the database it is connected to.
 
     from pysqlx import ClientFactory, Table
 
-    client = ClientFactory.get_sqlite3_client()
+    client = ClientFactory.get_sqlite_client()
 
     orders = Table(table_name="orders")
     customer = orders.append_char_string_column(column_name="customer", size=50)
     total = orders.append_float_column(column_name="total")
 
     client.create(orders).execute()
-    client.insert(orders).execute_many(param_tuple_list=[("Ada", 120.0), ("Grace", 80.5)])
+    client.insert(orders).execute_many(parameters_list=[("Ada", 120.0), ("Grace", 80.5)])
 
     rows = client.select(orders, condition=total > 100).execute()
     # (('Ada', 120.0),)

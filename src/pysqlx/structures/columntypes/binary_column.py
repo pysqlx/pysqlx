@@ -17,7 +17,7 @@ class BinaryColumn(Column):
     :param table: the table which the column belongs to
     :param default_value: the default value of the column, if any
     :param is_primary_key: whether the column is part of the primary key
-    :param is_prevent_null: whether the column rejects null values
+    :param is_required: whether the column rejects null values
     """
 
     def __init__(
@@ -26,7 +26,7 @@ class BinaryColumn(Column):
         table: Table,
         default_value: Any,
         is_primary_key: bool,
-        is_prevent_null: bool,
+        is_required: bool,
     ) -> None:
         super().__init__(
             column_name=column_name,
@@ -34,5 +34,5 @@ class BinaryColumn(Column):
             default_value=default_value,
             is_identity=False,
             is_primary_key=is_primary_key,
-            is_prevent_null=is_prevent_null,
+            is_required=is_required,
         )

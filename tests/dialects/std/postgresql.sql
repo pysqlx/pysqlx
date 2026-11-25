@@ -113,6 +113,43 @@ SUM("orders"."total") FROM "orders" LEFT JOIN "sales"."customers" ON "orders"."c
 -- select_join [10]
 SELECT "sales"."customers"."full name",
 SUM("orders"."total") FROM "orders" LEFT JOIN "sales"."customers" ON "orders"."customer_id" = "sales"."customers"."id" WHERE "orders"."total" > %s GROUP BY "sales"."customers"."full name" ORDER BY "sales"."customers"."full name" DESC LIMIT 3
+-- select_having
+SELECT "customer_id",
+SUM("total") FROM "orders" WHERE "total" > 1 GROUP BY "customer_id" HAVING ((SUM("total") >= 10) AND (COUNT(*) != 2)) AND (AVG("total") BETWEEN 1 AND 5) ORDER BY "customer_id" ASC
+-- select_having [1, 10, 2, 1, 5]
+SELECT "customer_id",
+SUM("total") FROM "orders" WHERE "total" > %s GROUP BY "customer_id" HAVING ((SUM("total") >= %s) AND (COUNT(*) != %s)) AND (AVG("total") BETWEEN %s AND %s) ORDER BY "customer_id" ASC
+-- select_alias
+SELECT "orders"."id",
+"o 2"."id" FROM "orders" INNER JOIN "orders" "o 2" ON ("orders"."customer_id" = "o 2"."customer_id") AND ("orders"."total" < "o 2"."total")
+-- select_only_alias
+SELECT "id" FROM "orders" "o 2" LIMIT 1
+-- reflect
+SELECT c.column_name, c.data_type, c.character_maximum_length,
+c.numeric_precision, c.numeric_scale, c.is_nullable, c.column_default,
+(SELECT COUNT(*) FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage k ON k.constraint_name = tc.constraint_name
+AND k.table_schema = tc.table_schema AND k.table_name = tc.table_name
+WHERE tc.constraint_type = 'PRIMARY KEY' AND k.table_schema = c.table_schema
+AND k.table_name = c.table_name AND k.column_name = c.column_name),
+CASE WHEN c.is_identity = 'YES' THEN 1 ELSE 0 END, NULL
+FROM information_schema.columns c
+WHERE c.table_name = 'customers'
+AND c.table_schema = 'sales'
+ORDER BY c.ordinal_position
+-- reflect_plain
+SELECT c.column_name, c.data_type, c.character_maximum_length,
+c.numeric_precision, c.numeric_scale, c.is_nullable, c.column_default,
+(SELECT COUNT(*) FROM information_schema.table_constraints tc
+JOIN information_schema.key_column_usage k ON k.constraint_name = tc.constraint_name
+AND k.table_schema = tc.table_schema AND k.table_name = tc.table_name
+WHERE tc.constraint_type = 'PRIMARY KEY' AND k.table_schema = c.table_schema
+AND k.table_name = c.table_name AND k.column_name = c.column_name),
+CASE WHEN c.is_identity = 'YES' THEN 1 ELSE 0 END, NULL
+FROM information_schema.columns c
+WHERE c.table_name = 'orders'
+AND c.table_schema = current_schema()
+ORDER BY c.ordinal_position
 -- select_distinct
 SELECT DISTINCT "full name", "code" FROM "sales"."customers" WHERE "code" != 'x' ORDER BY "full name" ASC, "code" DESC
 -- select_distinct ['x']
@@ -137,3 +174,27 @@ SELECT "customer_id" FROM "orders" WHERE "total" > %s
 ) "orders"
 ORDER BY
 "id" DESC
+-- foreign keys of orders
+SELECT rc.constraint_name, k.column_name,
+CASE WHEN k2.table_schema = k.table_schema THEN NULL ELSE k2.table_schema END,
+k2.table_name, k2.column_name
+FROM information_schema.referential_constraints rc
+JOIN information_schema.key_column_usage k ON k.constraint_name = rc.constraint_name
+AND k.constraint_schema = rc.constraint_schema
+JOIN information_schema.key_column_usage k2 ON k2.constraint_name = rc.unique_constraint_name
+AND k2.constraint_schema = rc.unique_constraint_schema
+AND k2.ordinal_position = k.position_in_unique_constraint
+WHERE k.table_name = 'orders' AND k.table_schema = current_schema()
+ORDER BY rc.constraint_name, k.ordinal_position
+-- foreign keys of customers
+SELECT rc.constraint_name, k.column_name,
+CASE WHEN k2.table_schema = k.table_schema THEN NULL ELSE k2.table_schema END,
+k2.table_name, k2.column_name
+FROM information_schema.referential_constraints rc
+JOIN information_schema.key_column_usage k ON k.constraint_name = rc.constraint_name
+AND k.constraint_schema = rc.constraint_schema
+JOIN information_schema.key_column_usage k2 ON k2.constraint_name = rc.unique_constraint_name
+AND k2.constraint_schema = rc.unique_constraint_schema
+AND k2.ordinal_position = k.position_in_unique_constraint
+WHERE k.table_name = 'customers' AND k.table_schema = 'sales'
+ORDER BY rc.constraint_name, k.ordinal_position

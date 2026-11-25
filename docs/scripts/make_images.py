@@ -216,33 +216,33 @@ def make_databases(theme: Theme) -> Figure:
     """Draw the clients, their libraries and their databases."""
     figure = Figure(760, 268, theme, "One interface for four databases")
 
-    figure.box(1, 92, 150, 84, fill=theme.accent_box, border=theme.accent)
-    figure.text(76, 128, "Your code", bold=True)
-    figure.text(76, 150, "tables and queries", size=12, color=theme.muted)
+    figure.box(1, 92, 136, 84, fill=theme.accent_box, border=theme.accent)
+    figure.text(69, 128, "Your code", bold=True)
+    figure.text(69, 150, "tables and queries", size=12, color=theme.muted)
 
     rows = (
-        ("SqliteThree", "sqlite3", "SQLite"),
-        ("Psycopg", "psycopg", "PostgreSQL"),
-        ("Pymysql", "pymysql", "MySQL, MariaDB"),
-        ("Pyodbc", "pyodbc", "SQL Server"),
+        ("SqliteClient", "sqlite3", "SQLite"),
+        ("PostgreSqlClient", "psycopg", "PostgreSQL"),
+        ("MySqlClient", "pymysql", "MySQL, MariaDB"),
+        ("SqlServerClient", "pyodbc", "SQL Server"),
     )
 
-    figure.text(302, 16, "Client", size=12, color=theme.muted)
-    figure.text(476, 16, "Library", size=12, color=theme.muted)
-    figure.text(664, 16, "Database", size=12, color=theme.muted)
+    figure.text(286, 16, "Client", size=12, color=theme.muted)
+    figure.text(465, 16, "Library", size=12, color=theme.muted)
+    figure.text(668, 16, "Database", size=12, color=theme.muted)
 
     for index, (client, library, database) in enumerate(rows):
         y = 28 + index * 60
 
-        figure.arrow(151, 134, 228, y + 22)
-        figure.box(232, y, 140, 44)
-        figure.text(302, y + 27, client, bold=True)
-        figure.arrow(372, y + 22, 412, y + 22)
-        figure.box(416, y, 120, 44, fill=theme.code_box)
-        figure.text(476, y + 27, library, size=13, mono=True)
-        figure.arrow(536, y + 22, 576, y + 22)
-        figure.box(580, y, 168, 44, radius=22)
-        figure.text(664, y + 27, database)
+        figure.arrow(137, 134, 194, y + 22)
+        figure.box(198, y, 176, 44)
+        figure.text(286, y + 27, client, bold=True)
+        figure.arrow(374, y + 22, 406, y + 22)
+        figure.box(410, y, 110, 44, fill=theme.code_box)
+        figure.text(465, y + 27, library, size=13, mono=True)
+        figure.arrow(520, y + 22, 574, y + 22)
+        figure.box(578, y, 180, 44, radius=22)
+        figure.text(668, y + 27, database)
 
     return figure
 

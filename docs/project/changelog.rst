@@ -3,6 +3,73 @@ Changelog
 
 All notable changes to ``pysqlx``, most recent first.
 
+Unreleased
+----------
+
+This version renames parts of the interface, so that the names say what they
+stand for. The old names were removed, without a period in which both work.
+To update code written for version 2, apply the table below.
+
+Renamed
+~~~~~~~
+
+.. list-table::
+   :header-rows: 1
+   :widths: 50 50
+
+   * - Version 2
+     - Now
+   * - ``client.is_exists(structure)``, ``IsExists``
+     - ``client.exists(structure)``, ``Exists``
+   * - ``client.get_length(table)``, ``GetLength``
+     - ``client.count_rows(table)``, ``CountRows``
+   * - ``is_prevent_null``, in the columns and in ``append_*_column()``
+     - ``is_required``
+   * - ``execute(param_tuple=...)``
+     - ``execute(parameters=...)``
+   * - ``execute_many(param_tuple_list=...)``
+     - ``execute_many(parameters_list=...)``
+   * - ``select(..., top=...)``, ``Select.top``
+     - ``select(..., limit=...)``, ``Select.limit``
+   * - ``structure``, the argument and the property of the queries which act
+       on a table
+     - ``table``. ``create()``, ``drop()`` and ``exists()`` keep
+       ``structure``.
+   * - ``union(structure_list=...)``
+     - ``union(table_list=...)``
+   * - ``ClientFactory.get_sqlite3_client()``, ``SqliteThree``
+     - ``ClientFactory.get_sqlite_client()``, ``SqliteClient``
+   * - ``ClientFactory.get_psycopg_client()``, ``Psycopg``
+     - ``ClientFactory.get_postgresql_client()``, ``PostgreSqlClient``
+   * - ``ClientFactory.get_pymysql_client()``, ``Pymysql``
+     - ``ClientFactory.get_mysql_client()``, ``MySqlClient``
+   * - ``ClientFactory.get_pyodbc_client()``, ``Pyodbc``
+     - ``ClientFactory.get_sql_server_client()``, ``SqlServerClient``
+   * - ``IClient``, ``IDialect``
+     - ``Client``, ``Dialect``
+
+The modules were renamed after their classes, for example
+``pysqlx.clients.sqlite_client``. The names of the providers, such as
+``"sqlite3"`` and ``"pyodbc"``, and of the dialects did not change.
+
+Added
+~~~~~
+
+* ``having`` in select queries, a condition on aggregates which keeps some
+  of the groups of rows. Aggregates can be compared with values like
+  columns.
+* ``Table.alias()``, which gives a second reference to a table, to join a
+  table to itself.
+* ``reflect()`` reads the foreign keys of a table, with the columns of the
+  tables they refer to.
+* ``ForeignKey.reference_table``.
+
+Fixed
+~~~~~
+
+* A foreign key keeps the table it refers to. Creating a table could fail
+  when the table referred to was no longer held by a variable.
+
 2.1.0 (2026-11-25)
 ------------------
 

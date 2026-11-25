@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from ..clients.i_client import IClient
+    from ..clients.client import Client
 
 
 class Query:
@@ -19,24 +19,24 @@ class Query:
     :param client: the client which executes the query
     """
 
-    def __init__(self, client: IClient) -> None:
+    def __init__(self, client: Client) -> None:
         self.__client = client
 
-    def execute(self, param_tuple: Sequence[Any] | None = None) -> Any:
+    def execute(self, parameters: Sequence[Any] | None = None) -> Any:
         """Execute the query once.
 
-        :param param_tuple: the values of the parameters of the query, for
+        :param parameters: the values of the parameters of the query, for
             the queries which take parameters
         :returns: the result of the query, which depends on its type
         """
-        return self.__client.execute(query=self, param_tuple=param_tuple)
+        return self.__client.execute(query=self, parameters=parameters)
 
-    def execute_many(self, param_tuple_list: Sequence[Sequence[Any]]) -> Any:
+    def execute_many(self, parameters_list: Sequence[Sequence[Any]]) -> Any:
         """Execute the query once for each set of parameter values.
 
-        :param param_tuple_list: one sequence of parameter values per
+        :param parameters_list: one sequence of parameter values per
             execution
         :returns: the result of the query, which depends on its type
         :raises UnsupportedOperationError: if the query does not support it
         """
-        return self.__client.execute_many(query=self, param_tuple_list=param_tuple_list)
+        return self.__client.execute_many(query=self, parameters_list=parameters_list)

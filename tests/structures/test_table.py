@@ -5,6 +5,7 @@ from pysqlx.exceptions import InvalidArgumentError
 from pysqlx.structures import (
     BinaryColumn,
     BooleanColumn,
+    Clause,
     DateColumn,
     DecimalColumn,
     ForeignKey,
@@ -142,7 +143,7 @@ def test_table_aggregates() -> None:
 
 
 def test_table_query_validation() -> None:
-    client = ClientFactory.get_sqlite3_client()
+    client = ClientFactory.get_sqlite_client()
     table = Table(table_name="t")
     first = table.append_integer_column(column_name="a")
     second = table.append_integer_column(column_name="b")
@@ -156,8 +157,8 @@ def test_table_query_validation() -> None:
         {"descend_by": [foreign]},
         {"group_by": [foreign]},
         {"ascend_by": [first], "descend_by": [first]},
-        {"top": -1},
-        {"top": "1"},
+        {"limit": -1},
+        {"limit": "1"},
         {"offset": -1},
         {"offset": True},
         {"joins": [other]},
@@ -190,11 +191,11 @@ def test_table_query_validation() -> None:
         client.select_distinct(table, columns=[])
 
     with pytest.raises(InvalidArgumentError):
-        client.union(structure_list=(table,), query_list=(client.create(table),))  # type: ignore[arg-type]
+        client.union(table_list=(table,), query_list=(client.create(table),))  # type: ignore[arg-type]
 
     with pytest.raises(InvalidArgumentError):
         client.union(
-            structure_list=(table, other),
+            table_list=(table, other),
             query_list=(client.select(table), client.select(other)),
             columns_list=((first,), (foreign,)),
             ascend_by=[foreign],
@@ -202,3 +203,64 @@ def test_table_query_validation() -> None:
 
     with pytest.raises(InvalidArgumentError):
         (first == 1) & 5  # type: ignore[operator]
+
+
+def test_table_alias() -> None:
+    table = Table(table_name="t")
+    first = table.append_integer_column(column_name="a", is_primary_key=True)
+    table.append_char_string_column(column_name="b", size=7)
+
+    assert table.alias_name is None
+
+    alias = table.alias("other")
+
+    assert alias is not table
+    assert (alias.table_name, alias.alias_name) == ("t", "other")
+    assert [col.column_name for col in alias.columns] == ["a", "b"]
+    assert [type(col) for col in alias.columns] == [type(col) for col in table.columns]
+    assert alias.columns[0] is not first
+    assert alias.columns[0].is_primary_key is True
+    assert alias.columns[0].table.alias_name == "other"
+    assert first.table.alias_name is None
+    assert alias.columns[1].get_index() == 1
+
+    with pytest.raises(InvalidArgumentError):
+        table.alias("")
+
+    client = ClientFactory.get_sqlite_client()
+    client.create(table).execute()
+    client.insert(table).execute_many(parameters_list=[(1, "x"), (2, "y")])
+
+    # A table and its alias are two tables to a query.
+    assert client.select(
+        table,
+        columns=[first, alias.columns[0]],
+        joins=[Join(table=alias, condition=first < alias.columns[0])],
+    ).execute() == ((1, 2),)
+
+    with pytest.raises(InvalidArgumentError):
+        client.select(table, columns=[alias.columns[0]])
+
+
+def test_table_aggregate_conditions() -> None:
+    client = ClientFactory.get_sqlite_client()
+    table = Table(table_name="t")
+    key = table.append_integer_column(column_name="k")
+    value = table.append_integer_column(column_name="v")
+
+    client.create(table).execute()
+    client.insert(table).execute_many(parameters_list=[(1, 1), (1, 2), (2, 5), (3, 1)])
+
+    def keys(having: Clause) -> list[int]:
+        query = client.select(table, columns=[key], group_by=[key], having=having, ascend_by=[key])
+        return [row[0] for row in query.execute()]
+
+    assert keys(value.sum() == 3) == [1]
+    assert keys(value.sum() != 3) == [2, 3]
+    assert keys(value.sum() > 3) == [2]
+    assert keys(value.sum() >= 3) == [1, 2]
+    assert keys(value.sum() < 3) == [3]
+    assert keys(value.sum() <= 3) == [1, 3]
+    assert keys(value.max().is_between(2, 5)) == [1, 2]
+    assert keys(~(table.count() == 1)) == [1]
+    assert len({value.sum(), value.sum()}) == 2
