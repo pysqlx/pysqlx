@@ -3,8 +3,8 @@ Changelog
 
 All notable changes to ``pysqlx``, most recent first.
 
-Unreleased
-----------
+2.1.0 (2026-11-25)
+------------------
 
 Security
 ~~~~~~~~
