@@ -1,7 +1,8 @@
 """PostgreSQL dialect."""
 
-from typing import Any, cast, override
+from typing import Any, cast
 
+from .._compat import override
 from ..queries import IsExists, Reflect
 from ..structures import (
     BinaryColumn,

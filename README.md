@@ -45,7 +45,7 @@ pip install "pysqlx[mysql]"        # MySQL and MariaDB, with pymysql
 pip install "pysqlx[odbc]"         # Microsoft SQL Server, with pyodbc
 ```
 
-`pysqlx` requires Python 3.12 or newer.
+`pysqlx` requires Python 3.11 or newer.
 
 ## Quickstart
 

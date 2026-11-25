@@ -2,8 +2,9 @@
 
 from collections.abc import Sequence
 from time import time
-from typing import Any, override
+from typing import Any
 
+from .._compat import override
 from ..exceptions import ConnectionFailedError, MissingDependencyError
 from ..logger import logger
 from .i_client import IClient

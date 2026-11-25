@@ -4,10 +4,10 @@ Installation
 Requirements
 ------------
 
-``pysqlx`` requires Python 3.12 or newer. It has no required dependency:
+``pysqlx`` requires Python 3.11 or newer. It has no required dependency:
 SQLite works with Python alone.
 
-It is tested on Python 3.12, 3.13 and 3.14 on Linux, macOS and Windows, and
+It is tested on Python 3.11, 3.12, 3.13 and 3.14 on Linux, macOS and Windows, and
 against PostgreSQL, MySQL and Microsoft SQL Server servers.
 
 Installing from PyPI

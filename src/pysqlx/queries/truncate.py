@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, Any
 
+from .._compat import override
 from ..structures import Table
 from .query import Query
 

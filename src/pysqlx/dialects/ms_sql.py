@@ -1,8 +1,9 @@
 """Microsoft SQL Server dialect."""
 
 from datetime import datetime
-from typing import Any, cast, override
+from typing import Any, cast
 
+from .._compat import override
 from ..exceptions import InvalidArgumentError
 from ..queries import Drop, IsExists, Reflect
 from ..structures import (

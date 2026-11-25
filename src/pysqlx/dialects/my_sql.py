@@ -1,7 +1,8 @@
 """MySQL dialect."""
 
-from typing import Any, cast, override
+from typing import Any, cast
 
+from .._compat import override
 from ..exceptions import UnsupportedOperationError
 from ..queries import Create, Drop, IsExists, Reflect
 from ..structures import (

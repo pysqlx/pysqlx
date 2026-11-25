@@ -175,7 +175,8 @@ servers which hold nothing else.
 With Docker, ``make servers-up`` starts a PostgreSQL and a MySQL server,
 ``make test-servers`` runs the tests of the clients against them and
 ``make servers-down`` stops them. CI runs the scenario against the three
-servers in the ``servers`` job.
+servers on Linux in the ``servers`` job, and against SQL Server on Windows
+and macOS in the ``sql-server`` job.
 
 The SQL which each dialect writes for a set of queries is compared with the
 files of ``tests/dialects/std``. When the SQL changes on purpose, review the

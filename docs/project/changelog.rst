@@ -3,6 +3,14 @@ Changelog
 
 All notable changes to ``pysqlx``, most recent first.
 
+Unreleased
+----------
+
+Changed
+~~~~~~~
+
+* Python 3.11 is supported. Version 2.0.0 required Python 3.12.
+
 2.0.0 (2026-11-25)
 ------------------
 

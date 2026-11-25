@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING
 
+from ...._compat import override
 from .clause import Clause
 
 if TYPE_CHECKING:
