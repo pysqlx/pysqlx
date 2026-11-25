@@ -1,13 +1,12 @@
 name: CodeQL
 
 on:
-  push:
-    branches: [master]
   pull_request:
     branches: [master]
   schedule:
-    # Weekly, to pick up new queries on unchanged code.
-    - cron: "17 4 * * 1"
+    # Daily on the default branch: it picks up new queries on unchanged code,
+    # and gives the results which those of a pull request are compared with.
+    - cron: "17 4 * * *"
 
 permissions:
   contents: read

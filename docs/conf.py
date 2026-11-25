@@ -113,7 +113,7 @@ texinfo_documents = [
         "pysqlx Documentation",
         author,
         "pysqlx",
-        "A generic SQL driver package.",
+        "Work with SQL databases without writing SQL.",
         "Miscellaneous",
     )
 ]

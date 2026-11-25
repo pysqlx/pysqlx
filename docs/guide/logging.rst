@@ -35,4 +35,5 @@ To change the level of ``pysqlx`` only:
 .. note::
 
    At the level ``DEBUG`` the log contains the values written to and read
-   from the database. The password of a connection is never logged.
+   from the database. The password of a connection is never logged. See
+   :doc:`security`.

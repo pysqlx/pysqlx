@@ -6,10 +6,33 @@ All notable changes to ``pysqlx``, most recent first.
 Unreleased
 ----------
 
+Security
+~~~~~~~~
+
+* The values of the connection string of the SQL Server client are escaped.
+  A server address, a username, a password or an option which contained
+  ``;`` could add attributes to the connection string.
+* The name of a SQLite database on disk can no longer lead out of its
+  directory, as ``"../other"`` did.
+* The SQL Server client no longer logs its connection string, which could
+  hold secrets given as ``connection_options``.
+
+Added
+~~~~~
+
+* ``connection_options`` for the PostgreSQL and MySQL clients, for example
+  to require an encrypted connection.
+* ``Index`` and ``Join`` can be imported from ``pysqlx``.
+* A page about :doc:`security </guide/security>`, and a security policy.
+
 Changed
 ~~~~~~~
 
 * Python 3.11 is supported. Version 2.0.0 required Python 3.12.
+* The logger of the package has a ``NullHandler``, and formats its messages
+  only when they are recorded.
+* A failed connection raises ``ConnectionFailedError`` with the same message
+  for every client.
 
 2.0.0 (2026-11-25)
 ------------------

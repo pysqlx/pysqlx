@@ -175,7 +175,7 @@ relates the rows of the two tables, usually by comparing two columns.
 
 .. code-block:: python
 
-    from pysqlx.structures import Join
+    from pysqlx import Join
 
     query = client.select(
         orders,

@@ -3,14 +3,16 @@
 from importlib.metadata import version
 
 from .clients import ClientFactory
-from .structures import Database, Schema, Table
+from .structures import Database, Index, Join, Schema, Table
 
 __version__ = version("pysqlx")
 
 __all__ = [
-    "__version__",
     "ClientFactory",
     "Database",
+    "Index",
+    "Join",
     "Schema",
     "Table",
+    "__version__",
 ]

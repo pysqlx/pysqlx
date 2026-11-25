@@ -1,17 +1,18 @@
 """Interface of the clients."""
 
-import os
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from datetime import date, datetime
 from decimal import Decimal
-from time import time
+from pathlib import Path
+from time import perf_counter
 from types import TracebackType
 from typing import Any, Self
 
 from ..dialects import IDialect, MsSql, MySql, PostgreSql, Sqlite
 from ..exceptions import (
+    ConnectionFailedError,
     InvalidArgumentError,
     PysqlxError,
     TransactionError,
@@ -57,7 +58,7 @@ _dialect_types: dict[str, Callable[[], IDialect]] = {
 }
 
 
-def _convert_value(value: Any, item: Column | Aggregate) -> Any:
+def _convert_result_value(value: Any, item: Column | Aggregate) -> Any:
     """Convert a value read from a database to the type of its column."""
     if isinstance(item, Aggregate):
         if item.column is None or item.function_name not in ("MAX", "MIN"):
@@ -144,7 +145,10 @@ class IClient(ABC):
         self.__database_name = database_name
 
     def __del__(self) -> None:
-        self.close()
+        # Nothing may be raised while an object is deleted, for example when
+        # Python shuts down.
+        with suppress(Exception):
+            self.close()
 
     def __enter__(self) -> Self:
         return self
@@ -202,7 +206,7 @@ class IClient(ABC):
         return self.__conn
 
     def _is_valid_directory_path(self, directory_path: str | None) -> bool:
-        return isinstance(directory_path, str) and os.path.exists(directory_path)
+        return isinstance(directory_path, str) and Path(directory_path).is_dir()
 
     def _is_valid_server_address(self, server_address: str) -> bool:
         return isinstance(server_address, str) and server_address != ""
@@ -248,6 +252,24 @@ class IClient(ABC):
         if not self._is_valid_server_port(server_port):
             raise InvalidArgumentError(f'server_port is invalid "{server_port}"')
 
+    def _connect(self, user_name: str, connect: Callable[[], Any]) -> Any:
+        """Open the connection to a server, and report how long it took."""
+        tic = perf_counter()
+
+        logger.info('authenticating for user "%s"', user_name)
+
+        try:
+            connection = connect()
+        except Exception as e:
+            raise ConnectionFailedError(
+                "could not connect to the database, check the address, the username "
+                "and the password"
+            ) from e
+
+        logger.info("connection initialized in %s seconds", perf_counter() - tic)
+
+        return connection
+
     def _is_valid_driver(self, dialect_name: str, driver_name: str) -> bool:
         return all(
             (
@@ -261,7 +283,7 @@ class IClient(ABC):
         for driver_name in self.get_preferred_drivers(dialect_name=dialect_name):
             if driver_name in sys_drivers:
                 return driver_name
-        raise PysqlxError("Could not find a valid driver")
+        raise PysqlxError(f'could not find an installed driver for "{dialect_name}"')
 
     def _check_dialect(self, dialect_name: str) -> None:
         if dialect_name not in self.get_dialects_names():
@@ -369,7 +391,7 @@ class IClient(ABC):
 
     def _end_transaction(self) -> None:
         """Return to the mode in which every query takes effect at once."""
-        return None
+        return
 
     def _convert_parameters(self, parameters: Sequence[Any]) -> Sequence[Any]:
         """Convert the values which the library of the client cannot take."""
@@ -381,12 +403,14 @@ class IClient(ABC):
         items: Sequence[Column | Aggregate],
     ) -> tuple[tuple[Any, ...], ...]:
         return tuple(
-            tuple(_convert_value(value, item) for value, item in zip(row, items, strict=True))
+            tuple(
+                _convert_result_value(value, item) for value, item in zip(row, items, strict=True)
+            )
             for row in rows
         )
 
     def _execute(self, sql_string: str, param_tuple: Sequence[Any] | None = None) -> Any:
-        tic = time()
+        tic = perf_counter()
 
         if not sql_string:
             raise InvalidArgumentError("invalid SQL request")
@@ -394,28 +418,28 @@ class IClient(ABC):
         cur = self._connection.cursor()
 
         if param_tuple:
-            logger.debug(f'executing "{sql_string}" with parameters "{param_tuple}"')
+            logger.debug('executing "%s" with parameters "%s"', sql_string, param_tuple)
             cur.execute(sql_string, self._convert_parameters(param_tuple))
         else:
-            logger.debug(f'executing "{sql_string}"')
+            logger.debug('executing "%s"', sql_string)
             cur.execute(sql_string)
 
-        logger.debug(f"executed in {time() - tic} seconds")
+        logger.debug("executed in %s seconds", perf_counter() - tic)
 
         return cur
 
     def _execute_many(self, sql_string: str, param_tuple_list: Sequence[Sequence[Any]]) -> Any:
-        tic = time()
+        tic = perf_counter()
 
         if not sql_string:
             raise InvalidArgumentError("invalid SQL request")
 
-        logger.debug(f'executing "{sql_string}" with many parameters "{param_tuple_list}"')
+        logger.debug('executing "%s" with many parameters "%s"', sql_string, param_tuple_list)
 
         cur = self._connection.cursor()
         cur.executemany(sql_string, [self._convert_parameters(row) for row in param_tuple_list])
 
-        logger.debug(f"executed in {time() - tic} seconds")
+        logger.debug("executed in %s seconds", perf_counter() - tic)
 
         return cur
 
@@ -435,7 +459,7 @@ class IClient(ABC):
     def _fetch(self, query: Query, param_tuple: Sequence[Any] | None) -> list[Any]:
         ret: list[Any] = self._run(query, param_tuple).fetchall()
 
-        logger.debug(f'received "{ret}"')
+        logger.debug('received "%s"', ret)
 
         return ret
 
@@ -491,12 +515,12 @@ class IClient(ABC):
     def _execute_IsEmpty(self, query: IsEmpty, param_tuple: Sequence[Any] | None) -> bool:
         ret = self._fetch(query, param_tuple)
 
-        return True if (ret and ret[0][0] == 0) else False
+        return bool(ret and ret[0][0] == 0)
 
     def _execute_IsExists(self, query: IsExists, param_tuple: Sequence[Any] | None) -> bool:
         ret = self._fetch(query, param_tuple)
 
-        return True if (ret and ret[0][0]) else False
+        return bool(ret and ret[0][0])
 
     def _execute_Reflect(self, query: Reflect, param_tuple: Sequence[Any] | None) -> Table:
         return self._dialect.get_reflected_table(query, self._fetch(query, param_tuple))

@@ -1,12 +1,10 @@
 """PostgreSQL client."""
 
-from collections.abc import Sequence
-from time import time
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from .._compat import override
-from ..exceptions import ConnectionFailedError, MissingDependencyError
-from ..logger import logger
+from ..exceptions import MissingDependencyError
 from .i_client import IClient
 
 _driver = "psycopg"
@@ -40,6 +38,9 @@ class Psycopg(IClient):
     :param dialect_name: the name of the dialect, ``"postgresql"``
     :param database_name: the name of the database to connect to, or ``None``
         for the default database of the user
+    :param connection_options: more arguments for the connection of ``psycopg``,
+        for example to require an encrypted connection, such as
+        ``{"sslmode": "verify-full"}``
     :raises InvalidArgumentError: if an argument is invalid
     :raises MissingDependencyError: if ``psycopg`` is not installed
     :raises ConnectionFailedError: if the connection fails
@@ -74,6 +75,7 @@ class Psycopg(IClient):
         server_port: int | None = None,
         dialect_name: str = "postgresql",
         database_name: str | None = None,
+        connection_options: Mapping[str, Any] | None = None,
     ) -> None:
         super().__init__(
             database_name=database_name,
@@ -84,14 +86,12 @@ class Psycopg(IClient):
 
         psycopg = _import_psycopg()
 
-        tic = time()
-
-        logger.info(f'authenticating for user "{user_name}"')
-
         arguments: dict[str, Any] = {
+            **(connection_options or {}),
             "host": server_address,
             "user": user_name,
             "password": user_pass,
+            "autocommit": True,
         }
 
         if server_port:
@@ -100,16 +100,7 @@ class Psycopg(IClient):
         if database_name:
             arguments["dbname"] = database_name
 
-        try:
-            conn = psycopg.connect(autocommit=True, **arguments)
-        except Exception as e:
-            raise ConnectionFailedError(
-                "could not authenticate DB, check username and password"
-            ) from e
-
-        logger.info(f"connection initalized in {time() - tic} seconds")
-
-        self._set_connection(conn)
+        self._set_connection(self._connect(user_name, lambda: psycopg.connect(**arguments)))
         self._set_dialect(dialect_name)
 
     @override

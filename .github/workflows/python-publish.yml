@@ -14,6 +14,7 @@ jobs:
       url: https://pypi.org/project/pysqlx/
 
     permissions:
+      contents: read
       id-token: write # required for PyPI trusted publishing
 
     steps:

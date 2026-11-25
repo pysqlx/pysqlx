@@ -136,13 +136,13 @@ class Sqlite(IDialect):
     def get_IsExists_database_string(
         self, query: IsExists, parameters: list[Any] | None = None
     ) -> str:
-        raise UnsupportedOperationError("database checks is not supported in SQLite")
+        raise UnsupportedOperationError("database checks are not supported in SQLite")
 
     @override
     def get_IsExists_schema_string(
         self, query: IsExists, parameters: list[Any] | None = None
     ) -> str:
-        raise UnsupportedOperationError("schema checks is not supported in SQLite")
+        raise UnsupportedOperationError("schema checks are not supported in SQLite")
 
     @override
     def get_IsExists_table_string(

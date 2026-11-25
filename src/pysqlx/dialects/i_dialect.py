@@ -230,16 +230,14 @@ class IDialect(ABC):
                 )
             )
 
-        for foreign_key in table.foreign_keys:
-            constraints.append(
-                "FOREIGN KEY ({}) REFERENCES {} ({})".format(
-                    ", ".join(self.get_column_qualifier(col) for col in foreign_key.columns),
-                    self.get_table_qualifier(foreign_key.reference_columns[0].table),
-                    ", ".join(
-                        self.get_column_qualifier(col) for col in foreign_key.reference_columns
-                    ),
-                )
+        constraints += [
+            "FOREIGN KEY ({}) REFERENCES {} ({})".format(
+                ", ".join(self.get_column_qualifier(col) for col in foreign_key.columns),
+                self.get_table_qualifier(foreign_key.reference_columns[0].table),
+                ", ".join(self.get_column_qualifier(col) for col in foreign_key.reference_columns),
             )
+            for foreign_key in table.foreign_keys
+        ]
 
         return constraints
 

@@ -1,3 +1,7 @@
+import sys
+from types import ModuleType
+from typing import Any
+
 import pytest
 
 from pysqlx.clients import ClientFactory, Psycopg
@@ -29,6 +33,37 @@ def test_psycopg_connection_failure() -> None:
         ClientFactory.get_psycopg_client(
             server_address="127.0.0.1", user_name="u", user_pass="p", server_port=1
         )
+
+
+def test_psycopg_connection_arguments(monkeypatch: pytest.MonkeyPatch) -> None:
+    received: dict[str, Any] = {}
+
+    class FakeConnection:
+        def close(self) -> None:
+            pass
+
+    def connect(**arguments: Any) -> FakeConnection:
+        received.update(arguments)
+        return FakeConnection()
+
+    module: Any = ModuleType("psycopg")
+    module.connect = connect
+    monkeypatch.setitem(sys.modules, "psycopg", module)
+
+    ClientFactory.get_psycopg_client(
+        server_address="h",
+        user_name="u",
+        user_pass="p",
+        server_port=1234,
+        database_name="shop",
+        connection_options={"connect_timeout": 5, "host": "other", "autocommit": False},
+    )
+
+    # The options are passed on, but cannot replace the arguments of the client.
+    assert received["connect_timeout"] == 5
+    assert (received["host"], received["user"], received["password"]) == ("h", "u", "p")
+    assert (received["port"], received["autocommit"]) == (1234, True)
+    assert "shop" in received.values()
 
 
 def test_psycopg_scenario(psycopg_client: Psycopg) -> None:

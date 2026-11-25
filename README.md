@@ -161,6 +161,7 @@ SQLite has neither schemas nor databases to create.
 The documentation at https://pysqlx.readthedocs.io/ contains:
 
 - a [quickstart](https://pysqlx.readthedocs.io/en/latest/getting-started/quickstart.html)
+- a [security](https://pysqlx.readthedocs.io/en/latest/guide/security.html) page
 - a user guide for [clients](https://pysqlx.readthedocs.io/en/latest/guide/clients.html), [tables and columns](https://pysqlx.readthedocs.io/en/latest/guide/structures.html), [conditions](https://pysqlx.readthedocs.io/en/latest/guide/conditions.html), [queries](https://pysqlx.readthedocs.io/en/latest/guide/queries.html), [transactions](https://pysqlx.readthedocs.io/en/latest/guide/transactions.html) and [errors](https://pysqlx.readthedocs.io/en/latest/guide/errors.html)
 - a [changelog](https://pysqlx.readthedocs.io/en/latest/project/changelog.html)
 - an [API reference](https://pysqlx.readthedocs.io/en/latest/reference/index.html) for every class and method

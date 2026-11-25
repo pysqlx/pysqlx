@@ -118,8 +118,8 @@ SQL Server
 
 Optional arguments ask for a trusted connection (``is_trusted_connection``),
 choose the ODBC driver (``driver_name``) and add attributes to the connection
-string (``connection_options``). For example, a server with a self-signed
-certificate needs:
+string (``connection_options``). For example, a development server with a
+self-signed certificate needs the check of its certificate turned off:
 
 .. code-block:: python
 
@@ -139,7 +139,9 @@ those it knows, newest first. To see them:
     print(ClientFactory.get_system_drivers("pyodbc"))  # installed on this machine
 
 All server clients take the port of the server as ``server_port`` when it is
-not the default one.
+not the default one, and more options of their library as
+``connection_options``, for example to require an encrypted connection. See
+:doc:`security`.
 
 Listing what is supported
 -------------------------
