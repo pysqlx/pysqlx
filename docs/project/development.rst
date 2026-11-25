@@ -5,6 +5,11 @@ Development
 reports, feature requests and pull requests are welcome, in particular for
 additional dialects and clients.
 
+What is open is on the :doc:`roadmap`, and what was decided, with the
+reasons, is in :doc:`decisions`. Both are kept in the repository, for people
+and for coding agents alike. The instructions for coding agents are in
+``.github/copilot-instructions.md``, which ``CLAUDE.md`` points to.
+
 Setting up
 ----------
 
