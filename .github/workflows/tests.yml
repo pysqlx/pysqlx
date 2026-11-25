@@ -3,6 +3,13 @@ name: Tests
 on:
   pull_request:
     branches: [master]
+    # Only when the change can affect the result of the tests.
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/tests.yml"
   schedule:
     # Daily on the default branch, which keeps the badge of the README current
     # and finds what changes outside the repository break.

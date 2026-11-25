@@ -181,6 +181,10 @@ servers on Linux in the ``servers-linux`` job, and against SQL Server on
 Windows and macOS in the ``sql-server-desktop`` job. The ``unit`` job runs the
 whole test suite with SQLite on every supported system and version of Python.
 
+The tests run for a pull request which changes the package, the tests, the
+dependencies or the workflow itself. A pull request which only changes the
+documentation skips them. They also run daily on ``master``.
+
 The SQL which each dialect writes for a set of queries is compared with the
 files of ``tests/dialects/std``. When the SQL changes on purpose, review the
 difference and update these files.
