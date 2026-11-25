@@ -1,37 +1,41 @@
-# This workflows will upload a Python Package using Twine when a release is created
-# For more information see: https://help.github.com/en/actions/language-and-framework-guides/using-python-with-github-actions#publishing-to-package-registries
-
 name: Publish
 
 on:
-  page_build:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
-  deploy:
-    name: Deploy to pypi.org
+  publish:
+    name: Publish to PyPI
     runs-on: ubuntu-latest
 
-    environment: PYPIOrgToken
+    environment:
+      name: pypi
+      url: https://pypi.org/project/pysqlx/
+
+    permissions:
+      id-token: write # required for PyPI trusted publishing
 
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Check out the repository
+        uses: actions/checkout@v4
         with:
-          python-version: "3.x"
+          fetch-depth: 0 # the version is read from the git tags
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install setuptools wheel twine mdToRst
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
 
-      - name: Build and publish
+      - name: Build the distributions
+        run: uv build
+
+      - name: Check that the version matches the release tag
         env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          TAG: ${{ github.event.release.tag_name }}
         run: |
-          python setup.py sdist bdist_wheel
-          twine upload dist/*
+          version="${TAG#v}"
+          ls dist
+          test -f "dist/pysqlx-${version}.tar.gz"
+          test -f "dist/pysqlx-${version}-py3-none-any.whl"
+
+      - name: Publish to PyPI
+        run: uv publish

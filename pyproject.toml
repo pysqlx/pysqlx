@@ -1,0 +1,108 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+
+[project]
+name = "pysqlx"
+dynamic = ["version"]
+description = "A generic SQL driver package"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Bassem Girgis", email = "brgirgis@gmail.com" }]
+maintainers = [{ name = "Bassem Girgis", email = "brgirgis@gmail.com" }]
+keywords = ["sql", "database", "sqlite", "odbc", "sql server"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Topic :: Database",
+  "Topic :: Database :: Front-Ends",
+  "Typing :: Typed",
+]
+dependencies = ["pyodbc>=5.2.0"]
+
+
+[project.urls]
+Homepage = "https://github.com/pysqlx/pysqlx"
+Documentation = "https://pysqlx.readthedocs.io/"
+Repository = "https://github.com/pysqlx/pysqlx"
+Issues = "https://github.com/pysqlx/pysqlx/issues"
+Author = "https://girgis.me"
+
+
+[dependency-groups]
+test = ["pytest>=9.0.2", "pytest-cov>=7.0.0", "pytest-xdist>=3.8.0"]
+lint = ["mypy>=1.19.1", "ruff>=0.14.0"]
+docs = ["sphinx>=8.1.3", "sphinx-autobuild>=2024.10.3", "furo>=2025.9.25"]
+dev = [
+  { include-group = "test" },
+  { include-group = "lint" },
+  { include-group = "docs" },
+]
+
+
+# The version is the git tag of the release, for example v1.0.2 gives 1.0.2.
+[tool.hatch.version]
+source = "vcs"
+
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/README.md", "/LICENSE"]
+
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+
+[tool.coverage.run]
+source = ["pysqlx"]
+
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "I",   # isort
+  "B",   # flake8-bugbear
+  "UP",  # pyupgrade
+  "T20", # flake8-print
+  "D",   # pydocstyle
+]
+ignore = [
+  "D105", # magic methods need no docstring
+  "D107", # constructor parameters are documented in the class docstring
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+"docs/conf.py" = ["D"]
+
+
+[tool.mypy]
+strict = true
+warn_unreachable = true
+disallow_any_unimported = true
+show_error_codes = true
+
+# pyodbc ships its type hints as a single stub file, which mypy does not look
+# for in the installed packages.
+[[tool.mypy.overrides]]
+module = "pyodbc"
+ignore_missing_imports = true
