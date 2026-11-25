@@ -112,6 +112,7 @@ ignore-decorators = ["pysqlx._compat.override"]
 "tests/**" = ["D"]
 "docs/conf.py" = ["D"]
 "docs/scripts/*.py" = ["T20"]
+".github/scripts/*.py" = ["T20"]
 
 
 [tool.mypy]

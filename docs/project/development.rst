@@ -33,6 +33,8 @@ Run ``make`` without arguments to list the targets.
      - Description
    * - ``make install``
      - create the virtual environment and install all dependencies
+   * - ``make install-test``
+     - install the package and the dependencies of the tests only
    * - ``make lint``
      - check the code style and formatting with ``ruff``
    * - ``make format``
@@ -51,6 +53,18 @@ Run ``make`` without arguments to list the targets.
      - run the tests of the clients against these servers
    * - ``make servers-down``
      - stop these servers
+   * - ``make sql-server-up``
+     - start a throwaway SQL Server with Docker
+   * - ``make sql-server-wait``
+     - wait until the SQL Server given in the environment accepts
+       connections
+   * - ``make odbc-driver``
+     - install the ODBC driver for SQL Server
+   * - ``make test-clients``
+     - run the tests of the clients against the servers given in the
+       environment
+   * - ``make test-sql-server``
+     - run the tests of the SQL Server client only
    * - ``make docs``
      - build this documentation, treating warnings as errors
    * - ``make docs-live``
@@ -61,6 +75,10 @@ Run ``make`` without arguments to list the targets.
      - show the version derived from the git tags
    * - ``make build``
      - build the source distribution and the wheel
+   * - ``make check-version TAG=v2.1.0``
+     - check that the built distributions have the version of a tag
+   * - ``make publish``
+     - upload the built distributions to PyPI
    * - ``make clean``
      - remove build, test and cache artifacts
 
@@ -78,6 +96,9 @@ Project layout
        logger.py      logger of the package
    tests/             tests, in the same layout
    docs/              this documentation
+   .github/
+       workflows/     what CI runs
+       scripts/       the steps of the workflows which need more than a command
 
 Every class has its own module, named after the class in lower case with
 underscores, and is exported by the ``__init__.py`` of its package.
@@ -147,6 +168,14 @@ Adding a database
 4. Add tests which run the scenario of ``tests/clients/scenario.py``, the
    expected SQL to ``tests/dialects/std``, and a server to the ``servers-linux``
    job of ``.github/workflows/tests.yml``.
+
+Workflows
+---------
+
+The workflows in ``.github/workflows`` only call ``make`` targets, so every
+step of CI can be run on a development machine in the same way. A step which
+needs more than a command is a Python script in ``.github/scripts``, which a
+target runs. The scripts use the standard library only.
 
 Testing
 -------
