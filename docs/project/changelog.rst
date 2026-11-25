@@ -3,8 +3,8 @@ Changelog
 
 All notable changes to ``pysqlx``, most recent first.
 
-Unreleased
-----------
+2.0.0 (2026-11-25)
+------------------
 
 This version changes the project layout and toolchain, makes the queries safe
 to use with any value, and adds databases and features. Code which only uses
