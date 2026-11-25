@@ -3,7 +3,7 @@
 from typing import Any, cast
 
 from .._compat import override
-from ..queries import IsExists, Reflect
+from ..queries import Exists, Reflect
 from ..structures import (
     BinaryColumn,
     BooleanColumn,
@@ -19,7 +19,7 @@ from ..structures import (
     Table,
     TextColumn,
 )
-from .i_dialect import IDialect
+from .dialect import Dialect
 
 _int_name_dict = {
     1: "smallint",
@@ -29,7 +29,7 @@ _int_name_dict = {
 }
 
 
-class PostgreSql(IDialect):
+class PostgreSql(Dialect):
     """Dialect of PostgreSQL.
 
     A table is qualified with its schema only: PostgreSQL cannot refer to a
@@ -110,27 +110,21 @@ class PostgreSql(IDialect):
         return self._get_declaration_string(column, type_string="text")
 
     @override
-    def get_IsExists_database_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_database_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         database = cast(Database, query.structure)
 
         name = self.get_literal_string(database.database_name)
         return f"SELECT COUNT(*) FROM pg_database WHERE datname={name}"
 
     @override
-    def get_IsExists_schema_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_schema_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         schema = cast(Schema, query.structure)
 
         name = self.get_literal_string(schema.schema_name)
         return f"SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name={name}"
 
     @override
-    def get_IsExists_table_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_table_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         table = cast(Table, query.structure)
 
         return "SELECT COUNT(*) FROM information_schema.tables WHERE table_name={}{}".format(
@@ -139,9 +133,7 @@ class PostgreSql(IDialect):
         )
 
     @override
-    def get_IsExists_index_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_index_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         index = cast(Index, query.structure)
 
         return "SELECT COUNT(*) FROM pg_indexes WHERE indexname={}{}".format(
@@ -157,7 +149,7 @@ class PostgreSql(IDialect):
 
     @override
     def get_Reflect_table_string(self, query: Reflect, parameters: list[Any] | None = None) -> str:
-        table = query.structure
+        table = query.table
 
         return self._get_information_schema_string(
             table,
@@ -211,3 +203,24 @@ class PostgreSql(IDialect):
             return {"kind": "binary"}
 
         return super()._get_reflected_type(data_type, size, precision, column_type)
+
+    @override
+    def get_foreign_keys_string(self, table: Table) -> str:
+        name = self.get_literal_string(table.table_name)
+        scope = (
+            self.get_literal_string(table.schema.schema_name)
+            if table.schema
+            else "current_schema()"
+        )
+
+        return f"""SELECT rc.constraint_name, k.column_name,
+CASE WHEN k2.table_schema = k.table_schema THEN NULL ELSE k2.table_schema END,
+k2.table_name, k2.column_name
+FROM information_schema.referential_constraints rc
+JOIN information_schema.key_column_usage k ON k.constraint_name = rc.constraint_name
+AND k.constraint_schema = rc.constraint_schema
+JOIN information_schema.key_column_usage k2 ON k2.constraint_name = rc.unique_constraint_name
+AND k2.constraint_schema = rc.unique_constraint_schema
+AND k2.ordinal_position = k.position_in_unique_constraint
+WHERE k.table_name = {name} AND k.table_schema = {scope}
+ORDER BY rc.constraint_name, k.ordinal_position"""

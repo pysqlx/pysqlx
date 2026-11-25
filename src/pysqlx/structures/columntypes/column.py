@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
@@ -43,7 +44,7 @@ class Column(Structure):
     :param is_identity: whether the database generates the values of the
         column
     :param is_primary_key: whether the column is part of the primary key
-    :param is_prevent_null: whether the column rejects null values. Identity
+    :param is_required: whether the column rejects null values. Identity
         and primary key columns always do.
     :raises InvalidArgumentError: if an identity or primary key column is
         given a default value
@@ -56,12 +57,12 @@ class Column(Structure):
         default_value: Any,
         is_identity: bool,
         is_primary_key: bool,
-        is_prevent_null: bool,
+        is_required: bool,
     ) -> None:
         super().__init__(structure_name="column")
 
         if is_identity or is_primary_key:
-            is_prevent_null = True
+            is_required = True
 
         if default_value is not None and any((is_identity, is_primary_key)):
             raise InvalidArgumentError("invalid default value settings")
@@ -71,7 +72,7 @@ class Column(Structure):
         self.__default_value = default_value
         self.__is_identity = is_identity
         self.__is_primary_key = is_primary_key
-        self.__is_prevent_null = is_prevent_null
+        self.__is_required = is_required
 
     @property
     def column_name(self) -> str:
@@ -99,9 +100,21 @@ class Column(Structure):
         return self.__is_primary_key
 
     @property
-    def is_prevent_null(self) -> bool:
+    def is_required(self) -> bool:
         """Whether the column rejects null values."""
-        return self.__is_prevent_null
+        return self.__is_required
+
+    def copy_to(self, table: Table) -> Column:
+        """Create a copy of the column which belongs to another table.
+
+        It is used to give the columns of a table to an alias of the table.
+
+        :param table: the table which the copy belongs to
+        :returns: the copy
+        """
+        column = copy.copy(self)
+        column.__table = table
+        return column
 
     def get_index(self) -> int:
         """Find the position of the column in its table.

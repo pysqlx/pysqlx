@@ -12,15 +12,15 @@ from .query import Query
 from .utility import check_cols, check_order_by_cols, has_col
 
 if TYPE_CHECKING:
-    from ..clients.i_client import IClient
+    from ..clients.client import Client
 
 
 class Select(Query):
     """Query which reads rows of a table.
 
     :param client: the client which executes the query
-    :param structure: the table to read from
-    :param top: the maximum number of rows to read. All rows by default.
+    :param table: the table to read from
+    :param limit: the maximum number of rows to read. All rows by default.
     :param columns: the columns and the aggregates to read. All columns of
         the table, and of the joined tables, by default.
     :param ascend_by: the columns to sort by in ascending order
@@ -30,14 +30,16 @@ class Select(Query):
     :param group_by: the columns which define the groups of rows which the
         aggregates are computed over
     :param joins: the tables to join to the table of the query
+    :param having: the condition which the groups of rows satisfy, built from
+        aggregates
     :raises InvalidArgumentError: if an argument is invalid
     """
 
     def __init__(
         self,
-        client: IClient,
-        structure: Table,
-        top: int | None,
+        client: Client,
+        table: Table,
+        limit: int | None,
         columns: Sequence[Column | Aggregate] | None,
         ascend_by: Sequence[Column] | None,
         descend_by: Sequence[Column] | None,
@@ -45,18 +47,21 @@ class Select(Query):
         offset: int | None = None,
         group_by: Sequence[Column] | None = None,
         joins: Sequence[Join] | None = None,
+        having: Clause | None = None,
     ) -> None:
         super().__init__(client=client)
 
-        if top is not None and (isinstance(top, bool) or not isinstance(top, int) or top < 0):
-            raise InvalidArgumentError(f'invalid top "{top}"')
+        if limit is not None and (
+            isinstance(limit, bool) or not isinstance(limit, int) or limit < 0
+        ):
+            raise InvalidArgumentError(f'invalid limit "{limit}"')
 
         if offset is not None and (
             isinstance(offset, bool) or not isinstance(offset, int) or offset < 0
         ):
             raise InvalidArgumentError(f'invalid offset "{offset}"')
 
-        available: list[Column] = list(structure.columns)
+        available: list[Column] = list(table.columns)
 
         for join in joins or ():
             if not isinstance(join, Join):
@@ -85,8 +90,8 @@ class Select(Query):
         if group_by and not check_cols(group_by, available):
             raise InvalidArgumentError("invalid group_by")
 
-        self.__structure = structure
-        self.__top = top
+        self.__table = table
+        self.__top = limit
         self.__columns = columns
         self.__ascend_by = ascend_by
         self.__descend_by = descend_by
@@ -94,14 +99,15 @@ class Select(Query):
         self.__offset = offset
         self.__group_by = group_by
         self.__joins = joins
+        self.__having = having
 
     @property
-    def structure(self) -> Table:
+    def table(self) -> Table:
         """Table to read from."""
-        return self.__structure
+        return self.__table
 
     @property
-    def top(self) -> int | None:
+    def limit(self) -> int | None:
         """Maximum number of rows to read, or ``None`` for all rows."""
         return self.__top
 
@@ -140,7 +146,12 @@ class Select(Query):
         """Tables joined to the table of the query, or ``None``."""
         return self.__joins
 
+    @property
+    def having(self) -> Clause | None:
+        """Condition which the groups of rows satisfy, or ``None``."""
+        return self.__having
+
     @override
-    def execute(self, param_tuple: Sequence[Any] | None = None) -> tuple[tuple[Any, ...], ...]:
-        rows: tuple[tuple[Any, ...], ...] = super().execute(param_tuple)
+    def execute(self, parameters: Sequence[Any] | None = None) -> tuple[tuple[Any, ...], ...]:
+        rows: tuple[tuple[Any, ...], ...] = super().execute(parameters)
         return rows

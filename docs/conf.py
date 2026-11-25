@@ -4,8 +4,8 @@ import sys
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _dist_version
 
-from pysqlx.clients import IClient
-from pysqlx.structures import Column, Table
+from pysqlx.clients import Client
+from pysqlx.structures import Aggregate, Column, Table
 
 # -- Project information ------------------------------------------------------
 
@@ -54,7 +54,7 @@ autodoc_typehints = "description"
 # hints.
 for _module_name, _module in list(sys.modules.items()):
     if _module_name.startswith("pysqlx."):
-        for _class in (Column, IClient, Table):
+        for _class in (Aggregate, Column, Client, Table):
             if not hasattr(_module, _class.__name__):
                 setattr(_module, _class.__name__, _class)
 

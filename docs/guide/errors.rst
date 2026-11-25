@@ -34,7 +34,7 @@ The exceptions which ``pysqlx`` raises derive from
         # invalid columns
 
     try:
-        client = ClientFactory.get_psycopg_client(...)
+        client = ClientFactory.get_postgresql_client(...)
     except PysqlxError as error:
         print(f"cannot use the database: {error}")
 

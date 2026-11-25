@@ -37,23 +37,23 @@ def test_columns(local_table: Table) -> None:
     assert not char_string_column.is_fixed
     assert char_string_column.size == 255
     assert not char_string_column.is_primary_key
-    assert not char_string_column.is_prevent_null
+    assert not char_string_column.is_required
 
     assert not datetime_column.is_primary_key
-    assert not datetime_column.is_prevent_null
+    assert not datetime_column.is_required
 
     assert float_column.is_double
     assert not float_column.is_primary_key
-    assert not float_column.is_prevent_null
+    assert not float_column.is_required
 
     assert integer_column.n_bytes == 4
     assert not integer_column.is_identity
     assert not integer_column.is_primary_key
-    assert not integer_column.is_prevent_null
+    assert not integer_column.is_required
 
     assert not text_column.is_unicode
     assert not text_column.is_primary_key
-    assert not text_column.is_prevent_null
+    assert not text_column.is_required
 
 
 def _check_clause(sqlite_dialect: Sqlite, clause: Clause, output_str: str) -> bool:

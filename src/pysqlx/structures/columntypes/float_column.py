@@ -19,7 +19,7 @@ class FloatColumn(Column):
     :param is_double: whether the values have double precision
     :param default_value: the default value of the column, if any
     :param is_primary_key: whether the column is part of the primary key
-    :param is_prevent_null: whether the column rejects null values
+    :param is_required: whether the column rejects null values
     :raises InvalidArgumentError: if an argument has an invalid type or value
     """
 
@@ -30,7 +30,7 @@ class FloatColumn(Column):
         is_double: bool,
         default_value: Any,
         is_primary_key: bool,
-        is_prevent_null: bool,
+        is_required: bool,
     ) -> None:
         super().__init__(
             column_name=column_name,
@@ -38,7 +38,7 @@ class FloatColumn(Column):
             default_value=default_value,
             is_identity=False,
             is_primary_key=is_primary_key,
-            is_prevent_null=is_prevent_null,
+            is_required=is_required,
         )
 
         if not (isinstance(is_double, bool)):

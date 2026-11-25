@@ -4,7 +4,7 @@ from typing import Any, cast
 
 from .._compat import override
 from ..exceptions import UnsupportedOperationError
-from ..queries import Create, Drop, IsExists, Reflect
+from ..queries import Create, Drop, Exists, Reflect
 from ..structures import (
     BinaryColumn,
     BooleanColumn,
@@ -20,7 +20,7 @@ from ..structures import (
     Table,
     TextColumn,
 )
-from .i_dialect import IDialect
+from .dialect import Dialect
 
 _int_name_dict = {
     1: "tinyint",
@@ -30,7 +30,7 @@ _int_name_dict = {
 }
 
 
-class MySql(IDialect):
+class MySql(Dialect):
     """Dialect of MySQL and MariaDB.
 
     MySQL has no schemas inside a database: a schema is another name for a
@@ -144,27 +144,21 @@ class MySql(IDialect):
         return f"DROP INDEX {name} ON {scope}"
 
     @override
-    def get_IsExists_database_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_database_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         database = cast(Database, query.structure)
 
         name = self.get_literal_string(database.database_name)
         return f"SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name={name}"
 
     @override
-    def get_IsExists_schema_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_schema_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         schema = cast(Schema, query.structure)
 
         name = self.get_literal_string(schema.schema_name)
         return f"SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name={name}"
 
     @override
-    def get_IsExists_table_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_table_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         table = cast(Table, query.structure)
 
         name = self.get_literal_string(table.table_name)
@@ -172,9 +166,7 @@ class MySql(IDialect):
         return f"SELECT COUNT(*) FROM information_schema.tables WHERE table_name={name}{scope}"
 
     @override
-    def get_IsExists_index_string(
-        self, query: IsExists, parameters: list[Any] | None = None
-    ) -> str:
+    def get_Exists_index_string(self, query: Exists, parameters: list[Any] | None = None) -> str:
         index = cast(Index, query.structure)
 
         name = self.get_literal_string(index.index_name)
@@ -199,7 +191,7 @@ class MySql(IDialect):
 
     @override
     def get_Reflect_table_string(self, query: Reflect, parameters: list[Any] | None = None) -> str:
-        table = query.structure
+        table = query.table
         database_name = self._get_database_name(table)
 
         return self._get_information_schema_string(
@@ -249,3 +241,31 @@ class MySql(IDialect):
             return {"kind": "binary"}
 
         return super()._get_reflected_type(data_type, size, precision, column_type)
+
+    @override
+    def get_foreign_keys_string(self, table: Table) -> str:
+        name = self.get_literal_string(table.table_name)
+        database_name = self._get_database_name(table)
+        scope = self.get_literal_string(database_name) if database_name else "DATABASE()"
+
+        return f"""SELECT constraint_name, column_name,
+CASE WHEN referenced_table_schema = table_schema THEN NULL ELSE referenced_table_schema END,
+referenced_table_name, referenced_column_name
+FROM information_schema.key_column_usage
+WHERE table_name = {name} AND table_schema = {scope}
+AND referenced_table_name IS NOT NULL
+ORDER BY constraint_name, ordinal_position"""
+
+    @override
+    def get_reference_table(
+        self,
+        table: Table,
+        schema_name: str | None,
+        table_name: str,
+    ) -> Table:
+        # A schema of MySQL is a database.
+        return Table(
+            table_name=table_name,
+            database=Database(database_name=schema_name) if schema_name else table.database,
+            schema=table.schema,
+        )

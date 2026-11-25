@@ -10,7 +10,7 @@ from typing import Any, Self
 from .._compat import override
 from ..exceptions import ConnectionFailedError, InvalidArgumentError
 from ..logger import logger
-from .i_client import IClient
+from .client import Client
 
 _disk_driver = "disk"
 _memory_driver = "memory"
@@ -73,7 +73,7 @@ def _get_connection(
     return conn
 
 
-class SqliteThree(IClient):
+class SqliteClient(Client):
     """Client for a SQLite database, using the ``sqlite3`` module.
 
     Dates, dates with a time and decimal numbers are stored as text, and
@@ -96,7 +96,7 @@ class SqliteThree(IClient):
     @staticmethod
     @override
     def get_client_name() -> str:
-        return "SqliteThree"
+        return "SqliteClient"
 
     @staticmethod
     @override

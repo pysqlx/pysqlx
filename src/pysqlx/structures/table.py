@@ -1,5 +1,7 @@
 """Table."""
 
+from __future__ import annotations
+
 import weakref
 from collections.abc import Iterable, Sequence
 from typing import Any, Self
@@ -47,6 +49,8 @@ class Table(Structure):
         self.__database = database
         self.__schema = schema
 
+        self.__alias_name: str | None = None
+
         self.__cols: list[Column] = []
         self.__foreign_keys: list[ForeignKey] = []
 
@@ -64,6 +68,35 @@ class Table(Structure):
     def schema(self) -> Schema | None:
         """Schema which the table belongs to, or ``None``."""
         return self.__schema
+
+    def _get_self(self) -> Table:
+        """Give the table itself, when reached through the weak reference of a column."""
+        return self
+
+    @property
+    def alias_name(self) -> str | None:
+        """Name which stands for the table in a select query, or ``None``."""
+        return self.__alias_name
+
+    def alias(self, alias_name: str) -> Table:
+        """Create a second reference to the table, under another name.
+
+        The alias has copies of the columns of the table, in the same order.
+        Use it to join a table to itself: the table and its alias are two
+        tables to a select query.
+
+        :param alias_name: the name which stands for the table in the query
+        :returns: the alias, with its own columns
+        :raises InvalidArgumentError: if the name is empty
+        """
+        if not isinstance(alias_name, str) or alias_name == "":
+            raise InvalidArgumentError(f'invalid alias_name "{alias_name}"')
+
+        table = Table(table_name=self.table_name, database=self.database, schema=self.schema)
+        table.__alias_name = alias_name
+        table.__cols = [column.copy_to(weakref.proxy(table)) for column in self.__cols]
+
+        return table
 
     @property
     def columns(self) -> list[Column]:
@@ -153,7 +186,7 @@ class Table(Structure):
         size: int = 255,
         default_value: Any = None,
         is_primary_key: bool = False,
-        is_prevent_null: bool = False,
+        is_required: bool = False,
     ) -> CharStringColumn:
         """Add a column which holds character strings of a limited size.
 
@@ -163,7 +196,7 @@ class Table(Structure):
         :param size: the maximum number of characters of a value
         :param default_value: the default value of the column, if any
         :param is_primary_key: whether the column is part of the primary key
-        :param is_prevent_null: whether the column rejects null values
+        :param is_required: whether the column rejects null values
         :returns: the new column
         """
         column = CharStringColumn(
@@ -174,7 +207,7 @@ class Table(Structure):
             size=size,
             default_value=default_value,
             is_primary_key=is_primary_key,
-            is_prevent_null=is_prevent_null,
+            is_required=is_required,
         )
         self.append_column(col_obj=column)
         return column
@@ -184,14 +217,14 @@ class Table(Structure):
         column_name: str,
         default_value: Any = None,
         is_primary_key: bool = False,
-        is_prevent_null: bool = False,
+        is_required: bool = False,
     ) -> DatetimeColumn:
         """Add a column which holds dates with a time.
 
         :param column_name: the name of the column
         :param default_value: the default value of the column, if any
         :param is_primary_key: whether the column is part of the primary key
-        :param is_prevent_null: whether the column rejects null values
+        :param is_required: whether the column rejects null values
         :returns: the new column
         """
         column = DatetimeColumn(
@@ -199,7 +232,7 @@ class Table(Structure):
             table=weakref.proxy(self),
             default_value=default_value,
             is_primary_key=is_primary_key,
-            is_prevent_null=is_prevent_null,
+            is_required=is_required,
         )
         self.append_column(col_obj=column)
         return column
@@ -210,7 +243,7 @@ class Table(Structure):
         is_double: bool = True,
         default_value: Any = None,
         is_primary_key: bool = False,
-        is_prevent_null: bool = False,
+        is_required: bool = False,
     ) -> FloatColumn:
         """Add a column which holds floating point numbers.
 
@@ -218,7 +251,7 @@ class Table(Structure):
         :param is_double: whether the values have double precision
         :param default_value: the default value of the column, if any
         :param is_primary_key: whether the column is part of the primary key
-        :param is_prevent_null: whether the column rejects null values
+        :param is_required: whether the column rejects null values
         :returns: the new column
         """
         column = FloatColumn(
@@ -227,7 +260,7 @@ class Table(Structure):
             is_double=is_double,
             default_value=default_value,
             is_primary_key=is_primary_key,
-            is_prevent_null=is_prevent_null,
+            is_required=is_required,
         )
         self.append_column(col_obj=column)
         return column
@@ -239,7 +272,7 @@ class Table(Structure):
         default_value: Any = None,
         is_identity: bool = False,
         is_primary_key: bool = False,
-        is_prevent_null: bool = False,
+        is_required: bool = False,
     ) -> IntegerColumn:
         """Add a column which holds integers.
 
@@ -249,7 +282,7 @@ class Table(Structure):
         :param is_identity: whether the database generates the values of the
             column
         :param is_primary_key: whether the column is part of the primary key
-        :param is_prevent_null: whether the column rejects null values
+        :param is_required: whether the column rejects null values
         :returns: the new column
         """
         column = IntegerColumn(
@@ -259,7 +292,7 @@ class Table(Structure):
             default_value=default_value,
             is_identity=is_identity,
             is_primary_key=is_primary_key,
-            is_prevent_null=is_prevent_null,
+            is_required=is_required,
         )
         self.append_column(col_obj=column)
         return column
@@ -270,7 +303,7 @@ class Table(Structure):
         is_unicode: bool = False,
         default_value: Any = None,
         is_primary_key: bool = False,
-        is_prevent_null: bool = False,
+        is_required: bool = False,
     ) -> TextColumn:
         """Add a column which holds text of unlimited size.
 
@@ -278,7 +311,7 @@ class Table(Structure):
         :param is_unicode: whether the column holds Unicode characters
         :param default_value: the default value of the column, if any
         :param is_primary_key: whether the column is part of the primary key
-        :param is_prevent_null: whether the column rejects null values
+        :param is_required: whether the column rejects null values
         :returns: the new column
         """
         column = TextColumn(
@@ -287,7 +320,7 @@ class Table(Structure):
             is_unicode=is_unicode,
             default_value=default_value,
             is_primary_key=is_primary_key,
-            is_prevent_null=is_prevent_null,
+            is_required=is_required,
         )
         self.append_column(col_obj=column)
         return column
@@ -297,14 +330,14 @@ class Table(Structure):
         column_name: str,
         default_value: Any = None,
         is_primary_key: bool = False,
-        is_prevent_null: bool = False,
+        is_required: bool = False,
     ) -> BooleanColumn:
         """Add a column which holds booleans.
 
         :param column_name: the name of the column
         :param default_value: the default value of the column, if any
         :param is_primary_key: whether the column is part of the primary key
-        :param is_prevent_null: whether the column rejects null values
+        :param is_required: whether the column rejects null values
         :returns: the new column
         """
         column = BooleanColumn(
@@ -312,7 +345,7 @@ class Table(Structure):
             table=weakref.proxy(self),
             default_value=default_value,
             is_primary_key=is_primary_key,
-            is_prevent_null=is_prevent_null,
+            is_required=is_required,
         )
         self.append_column(col_obj=column)
         return column
@@ -322,14 +355,14 @@ class Table(Structure):
         column_name: str,
         default_value: Any = None,
         is_primary_key: bool = False,
-        is_prevent_null: bool = False,
+        is_required: bool = False,
     ) -> DateColumn:
         """Add a column which holds dates without a time.
 
         :param column_name: the name of the column
         :param default_value: the default value of the column, if any
         :param is_primary_key: whether the column is part of the primary key
-        :param is_prevent_null: whether the column rejects null values
+        :param is_required: whether the column rejects null values
         :returns: the new column
         """
         column = DateColumn(
@@ -337,7 +370,7 @@ class Table(Structure):
             table=weakref.proxy(self),
             default_value=default_value,
             is_primary_key=is_primary_key,
-            is_prevent_null=is_prevent_null,
+            is_required=is_required,
         )
         self.append_column(col_obj=column)
         return column
@@ -349,7 +382,7 @@ class Table(Structure):
         scale: int = 2,
         default_value: Any = None,
         is_primary_key: bool = False,
-        is_prevent_null: bool = False,
+        is_required: bool = False,
     ) -> DecimalColumn:
         """Add a column which holds decimal numbers with a fixed number of digits.
 
@@ -358,7 +391,7 @@ class Table(Structure):
         :param scale: the number of digits after the decimal point
         :param default_value: the default value of the column, if any
         :param is_primary_key: whether the column is part of the primary key
-        :param is_prevent_null: whether the column rejects null values
+        :param is_required: whether the column rejects null values
         :returns: the new column
         """
         column = DecimalColumn(
@@ -368,7 +401,7 @@ class Table(Structure):
             scale=scale,
             default_value=default_value,
             is_primary_key=is_primary_key,
-            is_prevent_null=is_prevent_null,
+            is_required=is_required,
         )
         self.append_column(col_obj=column)
         return column
@@ -378,14 +411,14 @@ class Table(Structure):
         column_name: str,
         default_value: Any = None,
         is_primary_key: bool = False,
-        is_prevent_null: bool = False,
+        is_required: bool = False,
     ) -> BinaryColumn:
         """Add a column which holds binary data of unlimited size.
 
         :param column_name: the name of the column
         :param default_value: the default value of the column, if any
         :param is_primary_key: whether the column is part of the primary key
-        :param is_prevent_null: whether the column rejects null values
+        :param is_required: whether the column rejects null values
         :returns: the new column
         """
         column = BinaryColumn(
@@ -393,7 +426,7 @@ class Table(Structure):
             table=weakref.proxy(self),
             default_value=default_value,
             is_primary_key=is_primary_key,
-            is_prevent_null=is_prevent_null,
+            is_required=is_required,
         )
         self.append_column(col_obj=column)
         return column

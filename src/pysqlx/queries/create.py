@@ -10,7 +10,7 @@ from ..structures import Structure
 from .query import Query
 
 if TYPE_CHECKING:
-    from ..clients.i_client import IClient
+    from ..clients.client import Client
 
 
 class Create(Query):
@@ -20,7 +20,7 @@ class Create(Query):
     :param structure: the structure to create
     """
 
-    def __init__(self, client: IClient, structure: Structure) -> None:
+    def __init__(self, client: Client, structure: Structure) -> None:
         super().__init__(client=client)
 
         self.__structure = structure
@@ -31,5 +31,5 @@ class Create(Query):
         return self.__structure
 
     @override
-    def execute(self, param_tuple: Sequence[Any] | None = None) -> None:
-        super().execute(param_tuple)
+    def execute(self, parameters: Sequence[Any] | None = None) -> None:
+        super().execute(parameters)

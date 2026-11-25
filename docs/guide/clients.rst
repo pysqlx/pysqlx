@@ -24,19 +24,19 @@ created by :py:class:`~pysqlx.clients.ClientFactory`.
      - Dialect
    * - SQLite
      - ``sqlite3``
-     - :py:class:`~pysqlx.clients.SqliteThree`
+     - :py:class:`~pysqlx.clients.SqliteClient`
      - ``sqlite``
    * - PostgreSQL
      - ``psycopg``
-     - :py:class:`~pysqlx.clients.Psycopg`
+     - :py:class:`~pysqlx.clients.PostgreSqlClient`
      - ``postgresql``
    * - MySQL, MariaDB
      - ``pymysql``
-     - :py:class:`~pysqlx.clients.Pymysql`
+     - :py:class:`~pysqlx.clients.MySqlClient`
      - ``mysql``
    * - Microsoft SQL Server
      - ``pyodbc``
-     - :py:class:`~pysqlx.clients.Pyodbc`
+     - :py:class:`~pysqlx.clients.SqlServerClient`
      - ``mssql``
 
 The same tables and queries work with every client. The libraries of the
@@ -53,7 +53,7 @@ is closed.
 
     from pysqlx import ClientFactory
 
-    client = ClientFactory.get_sqlite3_client()
+    client = ClientFactory.get_sqlite_client()
 
 With a directory and a database name, the database is stored in the file
 ``<database_name>.db`` of the directory, which must exist. The file is
@@ -61,7 +61,7 @@ created if needed.
 
 .. code-block:: python
 
-    client = ClientFactory.get_sqlite3_client(
+    client = ClientFactory.get_sqlite_client(
         directory_path="data",
         database_name="shop",  # data/shop.db
     )
@@ -85,7 +85,7 @@ PostgreSQL
 
 .. code-block:: python
 
-    client = ClientFactory.get_psycopg_client(
+    client = ClientFactory.get_postgresql_client(
         server_address="db.example.com",
         user_name="reporting",
         user_pass="...",
@@ -97,7 +97,7 @@ MySQL and MariaDB
 
 .. code-block:: python
 
-    client = ClientFactory.get_pymysql_client(
+    client = ClientFactory.get_mysql_client(
         server_address="db.example.com",
         user_name="reporting",
         user_pass="...",
@@ -109,7 +109,7 @@ SQL Server
 
 .. code-block:: python
 
-    client = ClientFactory.get_pyodbc_client(
+    client = ClientFactory.get_sql_server_client(
         server_address="db.example.com",
         user_name="reporting",
         user_pass="...",
@@ -123,7 +123,7 @@ self-signed certificate needs the check of its certificate turned off:
 
 .. code-block:: python
 
-    client = ClientFactory.get_pyodbc_client(
+    client = ClientFactory.get_sql_server_client(
         server_address="localhost",
         user_name="sa",
         user_pass="...",
@@ -163,7 +163,7 @@ raised:
 
 .. code-block:: python
 
-    with ClientFactory.get_sqlite3_client() as client:
+    with ClientFactory.get_sqlite_client() as client:
         client.create(orders).execute()
 
     print(client.is_closed)

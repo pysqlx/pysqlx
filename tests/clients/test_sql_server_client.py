@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from pysqlx.clients import ClientFactory, Pyodbc
+from pysqlx.clients import ClientFactory, SqlServerClient
 from pysqlx.exceptions import ConnectionFailedError, InvalidArgumentError, MissingDependencyError
 from pysqlx.structures import Database, Schema, Table
 
@@ -48,15 +48,15 @@ def fake_pyodbc(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     return module  # type: ignore[no-any-return]
 
 
-def test_pyodbc_names() -> None:
-    assert Pyodbc.get_client_name() == "Pyodbc"
+def test_sql_server_names() -> None:
+    assert SqlServerClient.get_client_name() == "SqlServerClient"
     assert ClientFactory.get_dialects_names("pyodbc") == ("mssql",)
     assert ClientFactory.get_preferred_drivers("pyodbc", "mssql")[0] == (
         "ODBC Driver 18 for SQL Server"
     )
 
 
-def test_pyodbc_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_sql_server_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     # None in sys.modules makes the import fail.
     monkeypatch.setitem(sys.modules, "pyodbc", None)
 
@@ -64,17 +64,17 @@ def test_pyodbc_missing(monkeypatch: pytest.MonkeyPatch) -> None:
         ClientFactory.get_system_drivers("pyodbc")
 
     with pytest.raises(ImportError):
-        ClientFactory.get_pyodbc_client(server_address="h", user_name="u", user_pass="p")
+        ClientFactory.get_sql_server_client(server_address="h", user_name="u", user_pass="p")
 
 
-def test_pyodbc_connection(fake_pyodbc: Any) -> None:
+def test_sql_server_connection(fake_pyodbc: Any) -> None:
     assert ClientFactory.get_system_drivers("pyodbc") == [
         "SQL Server",
         "ODBC Driver 18 for SQL Server",
         "Other",
     ]
 
-    client = ClientFactory.get_pyodbc_client(server_address="h", user_name="u", user_pass="p")
+    client = ClientFactory.get_sql_server_client(server_address="h", user_name="u", user_pass="p")
     connection = fake_pyodbc.connections[-1]
 
     assert client.dialect_name == "mssql"
@@ -83,7 +83,7 @@ def test_pyodbc_connection(fake_pyodbc: Any) -> None:
         "DRIVER=ODBC Driver 18 for SQL Server;UID=u;SERVER=h;PWD=p"
     )
 
-    client = ClientFactory.get_pyodbc_client(
+    client = ClientFactory.get_sql_server_client(
         server_address="h",
         user_name="u",
         user_pass="p",
@@ -100,8 +100,8 @@ def test_pyodbc_connection(fake_pyodbc: Any) -> None:
     )
 
 
-def test_pyodbc_connection_string_escaping(fake_pyodbc: Any) -> None:
-    ClientFactory.get_pyodbc_client(
+def test_sql_server_connection_string_escaping(fake_pyodbc: Any) -> None:
+    ClientFactory.get_sql_server_client(
         server_address="h;Trusted_Connection=yes",
         user_name="u{1}",
         user_pass="p;Encrypt=no",
@@ -117,14 +117,14 @@ def test_pyodbc_connection_string_escaping(fake_pyodbc: Any) -> None:
 
     for name in ("Encrypt;x", "a=b", "", "{x}"):
         with pytest.raises(InvalidArgumentError):
-            ClientFactory.get_pyodbc_client(
+            ClientFactory.get_sql_server_client(
                 server_address="h", user_name="u", user_pass="p", connection_options={name: "1"}
             )
 
 
-def test_pyodbc_invalid_arguments(fake_pyodbc: Any) -> None:
-    def connect(**arguments: Any) -> Pyodbc:
-        return ClientFactory.get_pyodbc_client(
+def test_sql_server_invalid_arguments(fake_pyodbc: Any) -> None:
+    def connect(**arguments: Any) -> SqlServerClient:
+        return ClientFactory.get_sql_server_client(
             **{"server_address": "h", "user_name": "u", "user_pass": "p", **arguments}
         )
 
@@ -146,8 +146,8 @@ def test_pyodbc_invalid_arguments(fake_pyodbc: Any) -> None:
         connect(user_pass="wrong")
 
 
-def test_pyodbc_transaction(fake_pyodbc: Any) -> None:
-    client = ClientFactory.get_pyodbc_client(server_address="h", user_name="u", user_pass="p")
+def test_sql_server_transaction(fake_pyodbc: Any) -> None:
+    client = ClientFactory.get_sql_server_client(server_address="h", user_name="u", user_pass="p")
     connection = fake_pyodbc.connections[-1]
 
     client.begin()
@@ -170,46 +170,46 @@ def test_pyodbc_transaction(fake_pyodbc: Any) -> None:
     assert connection.calls == ["commit", "rollback", "close"]
 
 
-def test_pyodbc_scenario(pyodbc_client: Pyodbc) -> None:
-    run_scenario(pyodbc_client)
+def test_sql_server_scenario(sql_server_client: SqlServerClient) -> None:
+    run_scenario(sql_server_client)
 
 
-def test_pyodbc_database_and_schema(pyodbc_client: Pyodbc) -> None:
-    client = pyodbc_client
+def test_sql_server_database_and_schema(sql_server_client: SqlServerClient) -> None:
+    client = sql_server_client
 
     database = Database(database_name="pysqlx database")
     schema = Schema(schema_name="pysqlx schema")
     table = Table(table_name="pysqlx table", schema=schema)
     column = table.append_integer_column(column_name="a column")
 
-    if client.is_exists(database).execute():
+    if client.exists(database).execute():
         client.drop(database).execute()
 
     client.create(database).execute()
 
-    assert client.is_exists(database).execute() is True
+    assert client.exists(database).execute() is True
 
     client.drop(database).execute()
 
-    assert client.is_exists(database).execute() is False
+    assert client.exists(database).execute() is False
 
-    if client.is_exists(table).execute():
+    if client.exists(table).execute():
         client.drop(table).execute()
 
-    if client.is_exists(schema).execute():
+    if client.exists(schema).execute():
         client.drop(schema).execute()
 
     client.create(schema).execute()
     client.create(table).execute()
 
-    assert client.is_exists(schema).execute() is True
-    assert client.is_exists(table).execute() is True
+    assert client.exists(schema).execute() is True
+    assert client.exists(table).execute() is True
 
-    client.insert(table).execute(param_tuple=(7,))
+    client.insert(table).execute(parameters=(7,))
 
     assert client.select(table, condition=column == 7).execute() == ((7,),)
 
     client.drop(table).execute()
     client.drop(schema).execute()
 
-    assert client.is_exists(schema).execute() is False
+    assert client.exists(schema).execute() is False

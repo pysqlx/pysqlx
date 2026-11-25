@@ -5,7 +5,7 @@ from typing import Any
 
 from .._compat import override
 from ..exceptions import InvalidArgumentError, MissingDependencyError
-from .i_client import IClient
+from .client import Client
 
 _preferred_drivers: dict[str, tuple[str, ...]] = {
     "mssql": (
@@ -82,7 +82,7 @@ def _get_connection_string(
     return ";".join(conn_ar)
 
 
-class Pyodbc(IClient):
+class SqlServerClient(Client):
     """Client for a database server reached through ODBC, using ``pyodbc``.
 
     ``pyodbc`` is installed with ``pip install pysqlx[odbc]``.
@@ -108,7 +108,7 @@ class Pyodbc(IClient):
     @staticmethod
     @override
     def get_client_name() -> str:
-        return "Pyodbc"
+        return "SqlServerClient"
 
     @staticmethod
     @override

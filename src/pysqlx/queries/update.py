@@ -12,7 +12,7 @@ from .query import Query
 from .utility import check_cols
 
 if TYPE_CHECKING:
-    from ..clients.i_client import IClient
+    from ..clients.client import Client
 
 
 class Update(Query):
@@ -21,7 +21,7 @@ class Update(Query):
     The new values of the columns are given when the query is executed.
 
     :param client: the client which executes the query
-    :param structure: the table to change rows of
+    :param table: the table to change rows of
     :param columns: the columns to change. All columns of the table by
         default.
     :param condition: the condition which the changed rows satisfy
@@ -30,27 +30,27 @@ class Update(Query):
 
     def __init__(
         self,
-        client: IClient,
-        structure: Table,
+        client: Client,
+        table: Table,
         columns: Sequence[Column] | None,
         condition: Clause,
     ) -> None:
         super().__init__(client=client)
 
         if not columns:
-            columns = structure.columns
+            columns = table.columns
 
-        if not check_cols(columns, structure.columns):
+        if not check_cols(columns, table.columns):
             raise InvalidArgumentError("invalid columns")
 
-        self.__structure = structure
+        self.__table = table
         self.__columns = columns
         self.__condition = condition
 
     @property
-    def structure(self) -> Table:
+    def table(self) -> Table:
         """Table to change rows of."""
-        return self.__structure
+        return self.__table
 
     @property
     def columns(self) -> Sequence[Column]:
@@ -63,9 +63,9 @@ class Update(Query):
         return self.__condition
 
     @override
-    def execute(self, param_tuple: Sequence[Any] | None = None) -> None:
-        super().execute(param_tuple)
+    def execute(self, parameters: Sequence[Any] | None = None) -> None:
+        super().execute(parameters)
 
     @override
-    def execute_many(self, param_tuple_list: Sequence[Sequence[Any]]) -> None:
-        super().execute_many(param_tuple_list)
+    def execute_many(self, parameters_list: Sequence[Sequence[Any]]) -> None:
+        super().execute_many(parameters_list)

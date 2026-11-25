@@ -1,12 +1,12 @@
 """Queries which a client can execute."""
 
+from .count_rows import CountRows
 from .create import Create
 from .delete import Delete
 from .drop import Drop
-from .get_length import GetLength
+from .exists import Exists
 from .insert import Insert
 from .is_empty import IsEmpty
-from .is_exists import IsExists
 from .query import Query
 from .reflect import Reflect
 from .select import Select
@@ -16,13 +16,13 @@ from .union import Union
 from .update import Update
 
 __all__ = [
+    "CountRows",
     "Create",
     "Delete",
     "Drop",
-    "GetLength",
+    "Exists",
     "Insert",
     "IsEmpty",
-    "IsExists",
     "Query",
     "Reflect",
     "Select",

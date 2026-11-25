@@ -24,7 +24,7 @@ A query can be executed more than once.
    * - ``drop(structure)``
      - drops a table, an index, a schema or a database
      - ``None``
-   * - ``is_exists(structure)``
+   * - ``exists(structure)``
      - checks whether a structure exists
      - a boolean
    * - ``reflect(table_name)``
@@ -33,7 +33,7 @@ A query can be executed more than once.
    * - ``is_empty(table)``
      - checks whether a table has no rows
      - a boolean
-   * - ``get_length(table)``
+   * - ``count_rows(table)``
      - counts the rows of a table
      - an integer
    * - ``insert(table)``
@@ -68,7 +68,7 @@ The values are given at execution, in the order of the columns of the table:
 
 .. code-block:: python
 
-    client.insert(customers).execute(param_tuple=(1, "Ada"))
+    client.insert(customers).execute(parameters=(1, "Ada"))
 
 To give some of the columns only, name them. This is needed when the table
 has an identity column, whose values come from the database:
@@ -77,7 +77,7 @@ has an identity column, whose values come from the database:
 
     insert = client.insert(orders, columns=[customer_id, placed, total])
 
-    insert.execute(param_tuple=(1, datetime(2026, 1, 5), 120.0))
+    insert.execute(parameters=(1, datetime(2026, 1, 5), 120.0))
 
 ``execute_many()`` executes the query once per row, which is faster than
 executing it in a loop:
@@ -85,7 +85,7 @@ executing it in a loop:
 .. code-block:: python
 
     insert.execute_many(
-        param_tuple_list=[
+        parameters_list=[
             (2, datetime(2026, 1, 7), 80.5),
             (1, datetime(2026, 2, 1), 42.0),
         ]
@@ -109,23 +109,23 @@ Its optional arguments are:
 * ``condition``, described in :doc:`/guide/conditions`
 * ``ascend_by`` and ``descend_by``, the columns to sort by. A table can be
   sorted by a column which is not read.
-* ``top``, the maximum number of rows, and ``offset``, the number of rows to
+* ``limit``, the maximum number of rows, and ``offset``, the number of rows to
   skip first
 * ``group_by`` and ``joins``, described below
 
 .. code-block:: python
 
-    query = client.select(orders, columns=[order_id, total], top=2, descend_by=[total])
+    query = client.select(orders, columns=[order_id, total], limit=2, descend_by=[total])
 
     print(query.execute())
     # ((1, 120.0), (2, 80.5))
 
-``top`` and ``offset`` read a table page by page. Sort the rows, so that the
+``limit`` and ``offset`` read a table page by page. Sort the rows, so that the
 pages are well defined:
 
 .. code-block:: python
 
-    query = client.select(orders, columns=[order_id], top=1, offset=1, ascend_by=[order_id])
+    query = client.select(orders, columns=[order_id], limit=1, offset=1, ascend_by=[order_id])
 
     print(query.execute())
     # ((2,),)
@@ -167,6 +167,22 @@ have the same values in the given columns:
     print(query.execute())
     # ((1, 2, 162.0), (2, 1, 80.5))
 
+To keep some of the groups only, give a condition on an aggregate as
+``having``. A ``condition`` selects rows before they are grouped; ``having``
+selects groups afterwards.
+
+.. code-block:: python
+
+    query = client.select(
+        orders,
+        columns=[customer_id, total.sum()],
+        group_by=[customer_id],
+        having=total.sum() > 100,
+    )
+
+    print(query.execute())
+    # ((1, 162.0),)
+
 Joins
 -----
 
@@ -202,7 +218,31 @@ The ``kind`` of a join says which rows without a match are kept: none for
 those of the joined table for ``"right"``, and both for ``"full"``.
 
 The columns, the conditions and the sorting of the query can use the columns
-of all its tables. A table cannot be joined to itself.
+of all its tables.
+
+To join a table to itself, join it to an alias. ``alias()`` gives a second
+reference to a table under another name, with its own copies of the columns,
+in the same order. This query pairs each order with the larger orders of the
+same customer:
+
+.. code-block:: python
+
+    larger = orders.alias("larger")
+    larger_id, larger_customer, _, larger_total = larger.columns
+
+    query = client.select(
+        orders,
+        columns=[order_id, larger_id],
+        joins=[
+            Join(
+                table=larger,
+                condition=(customer_id == larger_customer) & (total < larger_total),
+            )
+        ],
+    )
+
+    print(query.execute())
+    # ((3, 1),)
 
 Combining selections
 --------------------
@@ -213,7 +253,7 @@ tables, one select query per table, and the columns to take from each:
 .. code-block:: python
 
     query = client.union(
-        structure_list=(customers, orders),
+        table_list=(customers, orders),
         query_list=(
             client.select(customers, columns=[customer_key]),
             client.select(orders, columns=[customer_id]),
@@ -233,7 +273,7 @@ one per column to change:
 
 .. code-block:: python
 
-    client.update(orders, columns=[total], condition=order_id == 3).execute(param_tuple=(45.0,))
+    client.update(orders, columns=[total], condition=order_id == 3).execute(parameters=(45.0,))
 
     client.delete(orders, condition=customer_id == 2).execute()
 
@@ -253,7 +293,7 @@ gives different SQL for different databases:
 
 .. code-block:: python
 
-    print(client.get_query_string(client.select(orders, columns=[total], top=10)))
+    print(client.get_query_string(client.select(orders, columns=[total], limit=10)))
 
 .. list-table::
    :header-rows: 1

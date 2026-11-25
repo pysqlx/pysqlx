@@ -8,18 +8,19 @@ from ...._compat import override
 from .clause import Clause
 
 if TYPE_CHECKING:
+    from ..aggregate import Aggregate
     from ..column import Column
 
 
 class NotBetween(Clause):
     """Clause which holds when a column is not between two values.
 
-    :param column: the column to test
+    :param column: the column, or the aggregate, to test
     :param value0: the lower bound
     :param value1: the upper bound
     """
 
-    def __init__(self, column: Column, value0: Any, value1: Any) -> None:
+    def __init__(self, column: Column | Aggregate, value0: Any, value1: Any) -> None:
         super().__init__()
 
         self.__column = column
@@ -27,8 +28,8 @@ class NotBetween(Clause):
         self.__value1 = value1
 
     @property
-    def column(self) -> Column:
-        """Column to test."""
+    def column(self) -> Column | Aggregate:
+        """Column, or aggregate, to test."""
         return self.__column
 
     @property

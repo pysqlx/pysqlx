@@ -4,17 +4,17 @@ from decimal import Decimal
 import pytest
 
 from pysqlx.clients import ClientFactory
-from pysqlx.dialects import IDialect, PostgreSql
+from pysqlx.dialects import Dialect, PostgreSql
 from pysqlx.exceptions import UnsupportedOperationError
-from pysqlx.structures import Database
+from pysqlx.structures import Structure
 
 
-def test_i_dialect_is_abstract() -> None:
+def test_dialect_is_abstract() -> None:
     with pytest.raises(TypeError):
-        IDialect(dialect_name="x")  # type: ignore[abstract]
+        Dialect(dialect_name="x")  # type: ignore[abstract]
 
 
-def test_i_dialect_literals() -> None:
+def test_dialect_literals() -> None:
     dialect = PostgreSql()
 
     assert dialect.get_literal_string(None) == "NULL"
@@ -25,8 +25,8 @@ def test_i_dialect_literals() -> None:
     assert dialect.get_literal_string(datetime(2024, 1, 2, 3, 4, 5)) == "'2024-01-02 03:04:05'"
 
 
-def test_i_dialect_unsupported_structure() -> None:
-    client = ClientFactory.get_sqlite3_client()
+def test_dialect_unsupported_structure() -> None:
+    client = ClientFactory.get_sqlite_client()
 
     with pytest.raises(UnsupportedOperationError):
-        client.truncate(Database(database_name="d")).execute()  # type: ignore[arg-type]
+        client.create(Structure(structure_name="view")).execute()

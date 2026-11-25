@@ -1,9 +1,15 @@
 """Foreign key."""
 
+from __future__ import annotations
+
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from ..exceptions import InvalidArgumentError
 from .columntypes import Column
+
+if TYPE_CHECKING:
+    from .table import Table
 
 
 class ForeignKey:
@@ -37,6 +43,9 @@ class ForeignKey:
 
         self.__columns = columns
         self.__reference_columns = reference_columns
+        # The columns only refer to their table weakly. Keep the table, so that
+        # it lives as long as the foreign key which needs it.
+        self.__reference_table = reference_columns[0].table._get_self()
 
     @property
     def columns(self) -> Sequence[Column]:
@@ -47,3 +56,8 @@ class ForeignKey:
     def reference_columns(self) -> Sequence[Column]:
         """Columns which are referred to."""
         return self.__reference_columns
+
+    @property
+    def reference_table(self) -> Table:
+        """Table which is referred to."""
+        return self.__reference_table

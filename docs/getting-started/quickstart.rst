@@ -19,7 +19,7 @@ arguments, this one keeps a SQLite database in memory, which needs no setup:
 
     from pysqlx import ClientFactory
 
-    client = ClientFactory.get_sqlite3_client()
+    client = ClientFactory.get_sqlite_client()
 
 Describing a table
 ------------------
@@ -44,12 +44,12 @@ Describing a table does not touch the database. Creating it is a query:
 
 .. code-block:: python
 
-    print(client.is_exists(orders).execute())
+    print(client.exists(orders).execute())
     # False
 
     client.create(orders).execute()
 
-    print(client.is_exists(orders).execute())
+    print(client.exists(orders).execute())
     # True
 
 Adding rows
@@ -65,16 +65,16 @@ the other columns. ``execute_many()`` adds several rows at once.
 
     insert = client.insert(orders, columns=[customer, placed, total])
 
-    insert.execute(param_tuple=("Ada", datetime(2026, 1, 5), 120.0))
+    insert.execute(parameters=("Ada", datetime(2026, 1, 5), 120.0))
 
     insert.execute_many(
-        param_tuple_list=[
+        parameters_list=[
             ("Grace", datetime(2026, 1, 7), 80.5),
             ("Ada", datetime(2026, 2, 1), 42.0),
         ]
     )
 
-    print(client.get_length(orders).execute())
+    print(client.count_rows(orders).execute())
     # 3
 
 Reading rows
@@ -118,11 +118,11 @@ Changing and removing rows
 
 .. code-block:: python
 
-    client.update(orders, columns=[total], condition=order_id == 3).execute(param_tuple=(45.0,))
+    client.update(orders, columns=[total], condition=order_id == 3).execute(parameters=(45.0,))
 
     client.delete(orders, condition=customer == "Grace").execute()
 
-    print(client.get_length(orders).execute())
+    print(client.count_rows(orders).execute())
     # 2
 
 Closing
@@ -133,7 +133,7 @@ closes it at the end:
 
 .. code-block:: python
 
-    with ClientFactory.get_sqlite3_client() as client:
+    with ClientFactory.get_sqlite_client() as client:
         client.create(orders).execute()
 
 Where to go next

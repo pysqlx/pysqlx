@@ -13,14 +13,14 @@ Work with SQL databases without writing SQL. Tables, conditions and queries are 
 ```python
 from pysqlx import ClientFactory, Table
 
-client = ClientFactory.get_sqlite3_client()  # a database in memory
+client = ClientFactory.get_sqlite_client()  # a database in memory
 
 orders = Table(table_name="orders")
 customer = orders.append_char_string_column(column_name="customer", size=50)
 total = orders.append_float_column(column_name="total")
 
 client.create(orders).execute()
-client.insert(orders).execute_many(param_tuple_list=[("Ada", 120.0), ("Grace", 80.5)])
+client.insert(orders).execute_many(parameters_list=[("Ada", 120.0), ("Grace", 80.5)])
 
 rows = client.select(orders, condition=total > 100).execute()
 # (('Ada', 120.0),)
@@ -56,7 +56,7 @@ A table starts without columns. Each `append_*_column` method adds a column and 
 ```python
 from pysqlx import ClientFactory, Table
 
-client = ClientFactory.get_sqlite3_client()
+client = ClientFactory.get_sqlite_client()
 
 orders = Table(table_name="orders")
 order_id = orders.append_integer_column(column_name="id", is_identity=True, is_primary_key=True)
@@ -75,14 +75,14 @@ from datetime import datetime
 client.create(orders).execute()
 
 client.insert(orders, columns=[customer, placed, total]).execute_many(
-    param_tuple_list=[
+    parameters_list=[
         ("Ada", datetime(2026, 1, 5), 120.0),
         ("Grace", datetime(2026, 1, 7), 80.5),
         ("Ada", datetime(2026, 2, 1), 42.0),
     ]
 )
 
-print(client.get_length(orders).execute())  # 3
+print(client.count_rows(orders).execute())  # 3
 ```
 
 ### Read rows
@@ -123,7 +123,7 @@ Tables are joined with `joins=[Join(table=..., condition=...)]`.
 
 ```python
 with client.transaction():
-    client.update(orders, columns=[total], condition=order_id == 3).execute(param_tuple=(45.0,))
+    client.update(orders, columns=[total], condition=order_id == 3).execute(parameters=(45.0,))
     client.delete(orders, condition=customer == "Grace").execute()
 ```
 
@@ -132,7 +132,7 @@ The changes take effect together at the end of the block, or not at all if it ra
 ### Connect to a database server
 
 ```python
-client = ClientFactory.get_psycopg_client(  # or get_pymysql_client, get_pyodbc_client
+client = ClientFactory.get_postgresql_client(  # or get_mysql_client, get_sql_server_client
     server_address="db.example.com",
     user_name="reporting",
     user_pass="...",
@@ -147,9 +147,9 @@ The same tables and queries work with every client. A client is closed with `clo
 | Method of the client | Does | `execute()` returns |
 | --- | --- | --- |
 | `create`, `drop` | creates or drops a table, an index, a schema or a database | `None` |
-| `is_exists` | checks whether a structure exists | a boolean |
+| `exists` | checks whether a structure exists | a boolean |
 | `reflect` | reads the columns of an existing table | a table |
-| `is_empty`, `get_length` | checks for rows, counts the rows | a boolean, an integer |
+| `is_empty`, `count_rows` | checks for rows, counts the rows | a boolean, an integer |
 | `insert`, `update` | adds rows, changes rows | `None` |
 | `select`, `select_distinct`, `union` | reads rows | a tuple of rows |
 | `delete`, `truncate` | removes rows, removes all rows | `None` |

@@ -70,7 +70,7 @@ the options of the library as ``connection_options``:
 .. code-block:: python
 
     # PostgreSQL
-    client = ClientFactory.get_psycopg_client(
+    client = ClientFactory.get_postgresql_client(
         server_address="db.example.com",
         user_name="reporting",
         user_pass=password,
@@ -78,7 +78,7 @@ the options of the library as ``connection_options``:
     )
 
     # MySQL
-    client = ClientFactory.get_pymysql_client(
+    client = ClientFactory.get_mysql_client(
         server_address="db.example.com",
         user_name="reporting",
         user_pass=password,
@@ -99,7 +99,7 @@ secret store:
 
     import os
 
-    client = ClientFactory.get_psycopg_client(
+    client = ClientFactory.get_postgresql_client(
         server_address="db.example.com",
         user_name="reporting",
         user_pass=os.environ["SHOP_DATABASE_PASSWORD"],

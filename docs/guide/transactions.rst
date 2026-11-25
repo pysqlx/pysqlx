@@ -22,8 +22,8 @@ block raises an exception:
 .. code-block:: python
 
     with client.transaction():
-        client.insert(customers).execute(param_tuple=(4, "Linus"))
-        client.insert(orders, columns=[customer_id, total]).execute(param_tuple=(4, 10.0))
+        client.insert(customers).execute(parameters=(4, "Linus"))
+        client.insert(orders, columns=[customer_id, total]).execute(parameters=(4, 10.0))
 
 If the second insert fails, the first one is undone and the exception is
 raised again:
@@ -37,7 +37,7 @@ raised again:
     except ValueError:
         pass
 
-    print(client.get_length(orders).execute())  # as before
+    print(client.count_rows(orders).execute())  # as before
 
 A transaction can also be controlled step by step:
 
@@ -47,7 +47,7 @@ A transaction can also be controlled step by step:
 
     client.delete(orders, condition=customer_id == 1).execute()
 
-    if client.get_length(orders).execute() == 0:
+    if client.count_rows(orders).execute() == 0:
         client.rollback()
     else:
         client.commit()

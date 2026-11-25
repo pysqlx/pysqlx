@@ -1,54 +1,55 @@
-"""MySQL client."""
+"""PostgreSQL client."""
 
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 from .._compat import override
 from ..exceptions import MissingDependencyError
-from .i_client import IClient
+from .client import Client
 
-_driver = "pymysql"
+_driver = "psycopg"
 
 _preferred_drivers: dict[str, tuple[str, ...]] = {
-    "mysql": (_driver,),
+    "postgresql": (_driver,),
 }
 
 
-def _import_pymysql() -> Any:
+def _import_psycopg() -> Any:
     try:
-        import pymysql
+        import psycopg
     except ImportError as e:
         raise MissingDependencyError(
-            'pymysql could not be imported, install it with "pip install pysqlx[mysql]"'
+            'psycopg could not be imported, install it with "pip install pysqlx[postgresql]"'
         ) from e
 
-    return pymysql
+    return psycopg
 
 
-class Pymysql(IClient):
-    """Client for a MySQL or MariaDB server, using ``pymysql``.
+class PostgreSqlClient(Client):
+    """Client for a PostgreSQL server, using ``psycopg``.
 
-    ``pymysql`` is installed with ``pip install pysqlx[mysql]``.
+    ``psycopg`` is installed with ``pip install pysqlx[postgresql]``.
 
     :param server_address: the address of the server
     :param user_name: the name of the user
     :param user_pass: the password of the user
     :param server_port: the port of the server, or ``None`` for the default
         one
-    :param dialect_name: the name of the dialect, ``"mysql"``
+    :param dialect_name: the name of the dialect, ``"postgresql"``
     :param database_name: the name of the database to connect to, or ``None``
-    :param connection_options: more arguments for the connection of ``pymysql``,
+        for the default database of the user
+    :param connection_options: more arguments for the connection of ``psycopg``,
         for example to require an encrypted connection, such as
-        ``{"ssl_verify_identity": True, "ssl_ca": "ca.pem"}``
+        ``{"sslmode": "verify-full"}``
     :raises InvalidArgumentError: if an argument is invalid
-    :raises MissingDependencyError: if ``pymysql`` is not installed
+    :raises MissingDependencyError: if ``psycopg`` is not installed
     :raises ConnectionFailedError: if the connection fails
     """
 
     @staticmethod
     @override
     def get_client_name() -> str:
-        return "Pymysql"
+        return "PostgreSqlClient"
 
     @staticmethod
     @override
@@ -63,7 +64,7 @@ class Pymysql(IClient):
     @staticmethod
     @override
     def get_system_drivers() -> Sequence[str]:
-        _import_pymysql()
+        _import_psycopg()
         return (_driver,)
 
     def __init__(
@@ -72,7 +73,7 @@ class Pymysql(IClient):
         user_name: str,
         user_pass: str,
         server_port: int | None = None,
-        dialect_name: str = "mysql",
+        dialect_name: str = "postgresql",
         database_name: str | None = None,
         connection_options: Mapping[str, Any] | None = None,
     ) -> None:
@@ -83,7 +84,7 @@ class Pymysql(IClient):
         self._check_server_arguments(server_address, user_name, user_pass, server_port)
         self._check_dialect(dialect_name)
 
-        pymysql = _import_pymysql()
+        psycopg = _import_psycopg()
 
         arguments: dict[str, Any] = {
             **(connection_options or {}),
@@ -97,11 +98,15 @@ class Pymysql(IClient):
             arguments["port"] = server_port
 
         if database_name:
-            arguments["database"] = database_name
+            arguments["dbname"] = database_name
 
-        self._set_connection(self._connect(user_name, lambda: pymysql.connect(**arguments)))
+        self._set_connection(self._connect(user_name, lambda: psycopg.connect(**arguments)))
         self._set_dialect(dialect_name)
 
     @override
     def _begin_transaction(self) -> None:
-        self._connection.begin()
+        self._connection.autocommit = False
+
+    @override
+    def _end_transaction(self) -> None:
+        self._connection.autocommit = True

@@ -12,14 +12,14 @@ from .query import Query
 from .utility import check_cols, check_order_by_cols
 
 if TYPE_CHECKING:
-    from ..clients.i_client import IClient
+    from ..clients.client import Client
 
 
 class SelectDistinct(Query):
     """Query which reads the distinct values of columns of a table.
 
     :param client: the client which executes the query
-    :param structure: the table to read from
+    :param table: the table to read from
     :param columns: the columns to read
     :param ascend_by: the columns to sort by in ascending order
     :param descend_by: the columns to sort by in descending order
@@ -29,8 +29,8 @@ class SelectDistinct(Query):
 
     def __init__(
         self,
-        client: IClient,
-        structure: Table,
+        client: Client,
+        table: Table,
         columns: Sequence[Column],
         ascend_by: Sequence[Column] | None,
         descend_by: Sequence[Column] | None,
@@ -41,7 +41,7 @@ class SelectDistinct(Query):
         if len(columns) < 1:
             raise InvalidArgumentError("empty columns")
 
-        if not check_cols(columns, structure.columns):
+        if not check_cols(columns, table.columns):
             raise InvalidArgumentError("invalid columns")
 
         if ascend_by and not check_cols(ascend_by, columns):
@@ -53,16 +53,16 @@ class SelectDistinct(Query):
         if not check_order_by_cols(ascend_by, descend_by):
             raise InvalidArgumentError("invalid ascend_by and descend_by")
 
-        self.__structure = structure
+        self.__table = table
         self.__columns = columns
         self.__ascend_by = ascend_by
         self.__descend_by = descend_by
         self.__condition = condition
 
     @property
-    def structure(self) -> Table:
+    def table(self) -> Table:
         """Table to read from."""
-        return self.__structure
+        return self.__table
 
     @property
     def columns(self) -> Sequence[Column]:
@@ -85,6 +85,6 @@ class SelectDistinct(Query):
         return self.__condition
 
     @override
-    def execute(self, param_tuple: Sequence[Any] | None = None) -> tuple[tuple[Any, ...], ...]:
-        rows: tuple[tuple[Any, ...], ...] = super().execute(param_tuple)
+    def execute(self, parameters: Sequence[Any] | None = None) -> tuple[tuple[Any, ...], ...]:
+        rows: tuple[tuple[Any, ...], ...] = super().execute(parameters)
         return rows

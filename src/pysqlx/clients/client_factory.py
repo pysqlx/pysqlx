@@ -3,17 +3,17 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from .i_client import IClient
-from .psycopg import Psycopg
-from .pymysql import Pymysql
-from .pyodbc import Pyodbc
-from .sqlite_three import SqliteThree
+from .client import Client
+from .my_sql_client import MySqlClient
+from .postgre_sql_client import PostgreSqlClient
+from .sql_server_client import SqlServerClient
+from .sqlite_client import SqliteClient
 
-_support_dict: dict[str, type[IClient]] = {
-    "sqlite3": SqliteThree,
-    "pyodbc": Pyodbc,
-    "psycopg": Psycopg,
-    "pymysql": Pymysql,
+_support_dict: dict[str, type[Client]] = {
+    "sqlite3": SqliteClient,
+    "pyodbc": SqlServerClient,
+    "psycopg": PostgreSqlClient,
+    "pymysql": MySqlClient,
 }
 
 
@@ -64,12 +64,12 @@ class ClientFactory:
         return _support_dict[provider_name].get_system_drivers()
 
     @staticmethod
-    def get_sqlite3_client(
+    def get_sqlite_client(
         directory_path: str | None = None,
         dialect_name: str = "sqlite",
         driver_name: str | None = None,
         database_name: str | None = None,
-    ) -> SqliteThree:
+    ) -> SqliteClient:
         """Create a client for a SQLite database.
 
         Without arguments, the database is kept in memory. With a directory
@@ -86,7 +86,7 @@ class ClientFactory:
         :raises InvalidArgumentError: if an argument is invalid
         :raises ConnectionFailedError: if the database cannot be opened
         """
-        return SqliteThree(
+        return SqliteClient(
             directory_path=directory_path,
             dialect_name=dialect_name,
             driver_name=driver_name,
@@ -94,7 +94,7 @@ class ClientFactory:
         )
 
     @staticmethod
-    def get_pyodbc_client(
+    def get_sql_server_client(
         server_address: str,
         user_name: str,
         user_pass: str,
@@ -104,7 +104,7 @@ class ClientFactory:
         driver_name: str | None = None,
         database_name: str | None = None,
         connection_options: Mapping[str, str] | None = None,
-    ) -> Pyodbc:
+    ) -> SqlServerClient:
         """Create a client for a Microsoft SQL Server reached through ODBC.
 
         :param server_address: the address of the server
@@ -124,7 +124,7 @@ class ClientFactory:
         :raises MissingDependencyError: if ``pyodbc`` is not installed
         :raises ConnectionFailedError: if the connection fails
         """
-        return Pyodbc(
+        return SqlServerClient(
             server_address=server_address,
             user_name=user_name,
             user_pass=user_pass,
@@ -137,7 +137,7 @@ class ClientFactory:
         )
 
     @staticmethod
-    def get_psycopg_client(
+    def get_postgresql_client(
         server_address: str,
         user_name: str,
         user_pass: str,
@@ -145,7 +145,7 @@ class ClientFactory:
         server_port: int | None = None,
         database_name: str | None = None,
         connection_options: Mapping[str, Any] | None = None,
-    ) -> Psycopg:
+    ) -> PostgreSqlClient:
         """Create a client for a PostgreSQL server.
 
         :param server_address: the address of the server
@@ -163,7 +163,7 @@ class ClientFactory:
         :raises MissingDependencyError: if ``psycopg`` is not installed
         :raises ConnectionFailedError: if the connection fails
         """
-        return Psycopg(
+        return PostgreSqlClient(
             server_address=server_address,
             user_name=user_name,
             user_pass=user_pass,
@@ -174,7 +174,7 @@ class ClientFactory:
         )
 
     @staticmethod
-    def get_pymysql_client(
+    def get_mysql_client(
         server_address: str,
         user_name: str,
         user_pass: str,
@@ -182,7 +182,7 @@ class ClientFactory:
         server_port: int | None = None,
         database_name: str | None = None,
         connection_options: Mapping[str, Any] | None = None,
-    ) -> Pymysql:
+    ) -> MySqlClient:
         """Create a client for a MySQL or MariaDB server.
 
         :param server_address: the address of the server
@@ -199,7 +199,7 @@ class ClientFactory:
         :raises MissingDependencyError: if ``pymysql`` is not installed
         :raises ConnectionFailedError: if the connection fails
         """
-        return Pymysql(
+        return MySqlClient(
             server_address=server_address,
             user_name=user_name,
             user_pass=user_pass,

@@ -16,7 +16,7 @@ def test_logger_reports_statements(caplog: pytest.LogCaptureFixture) -> None:
     column = table.append_char_string_column(column_name="a")
 
     with caplog.at_level(logging.DEBUG, logger="pysqlx"):
-        with ClientFactory.get_sqlite3_client() as client:
+        with ClientFactory.get_sqlite_client() as client:
             client.create(table).execute()
             client.select(table, condition=column == "secret").execute()
 

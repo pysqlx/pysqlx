@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from pysqlx.clients import IClient
+from pysqlx.clients import Client
 from pysqlx.exceptions import InvalidArgumentError, TransactionError
 from pysqlx.structures import CharStringColumn, DecimalColumn, Index, Join, Table
 
@@ -36,11 +36,11 @@ ROWS = (
 )
 
 
-def run_scenario(client: IClient) -> None:
+def run_scenario(client: Client) -> None:
     customers = Table(table_name="pysqlx_customers")
     customer_id = customers.append_integer_column(column_name="id", is_primary_key=True)
     name = customers.append_char_string_column(
-        column_name="name", size=50, is_unicode=True, is_prevent_null=True
+        column_name="name", size=50, is_unicode=True, is_required=True
     )
     joined = customers.append_date_column(column_name="joined")
     is_active = customers.append_boolean_column(column_name="is_active")
@@ -55,20 +55,20 @@ def run_scenario(client: IClient) -> None:
     order_id = orders.append_integer_column(
         column_name="order", is_identity=True, is_primary_key=True
     )
-    order_customer = orders.append_integer_column(column_name="select", is_prevent_null=True)
+    order_customer = orders.append_integer_column(column_name="select", is_required=True)
     total = orders.append_float_column(column_name="total")
     orders.append_foreign_key(columns=[order_customer], reference_columns=[customer_id])
 
     for table in (orders, customers):
-        if client.is_exists(table).execute():
+        if client.exists(table).execute():
             client.drop(table).execute()
 
-    assert client.is_exists(customers).execute() is False
+    assert client.exists(customers).execute() is False
 
     client.create(customers).execute()
     client.create(orders).execute()
 
-    assert client.is_exists(customers).execute() is True
+    assert client.exists(customers).execute() is True
     assert client.is_empty(customers).execute() is True
 
     # Reading the tables back from the database.
@@ -78,7 +78,7 @@ def run_scenario(client: IClient) -> None:
         (type(col).__name__, col.column_name) for col in customers.columns
     ]
     assert [col.is_primary_key for col in reflected.columns] == [True] + [False] * 8
-    assert [col.is_prevent_null for col in reflected.columns] == [True, True] + [False] * 7
+    assert [col.is_required for col in reflected.columns] == [True, True] + [False] * 7
     assert [col.is_identity for col in reflected.columns] == [False] * 9
 
     reflected_name = reflected.columns[1]
@@ -95,15 +95,25 @@ def run_scenario(client: IClient) -> None:
     assert [col.is_identity for col in reflected_orders.columns] == [True, False, False]
     assert client.select(reflected_orders).execute() == ()
 
+    assert reflected.foreign_keys == []
+    assert len(reflected_orders.foreign_keys) == 1
+
+    foreign_key = reflected_orders.foreign_keys[0]
+
+    assert [col.column_name for col in foreign_key.columns] == ["select"]
+    assert [col.column_name for col in foreign_key.reference_columns] == ["id"]
+    assert foreign_key.reference_table.table_name == "pysqlx_customers"
+    assert foreign_key.reference_columns[0].table.table_name == "pysqlx_customers"
+
     with pytest.raises(InvalidArgumentError):
         client.reflect("pysqlx_missing").execute()
 
     # Rows, with every type of column.
-    client.insert(customers).execute(param_tuple=ROWS[0])
-    client.insert(customers).execute_many(param_tuple_list=ROWS[1:])
+    client.insert(customers).execute(parameters=ROWS[0])
+    client.insert(customers).execute_many(parameters_list=ROWS[1:])
 
     assert client.is_empty(customers).execute() is False
-    assert client.get_length(customers).execute() == 3
+    assert client.count_rows(customers).execute() == 3
     assert client.select(customers, ascend_by=[customer_id]).execute() == ROWS
     assert client.select(reflected, ascend_by=[reflected.columns[0]]).execute() == ROWS
 
@@ -137,14 +147,14 @@ def run_scenario(client: IClient) -> None:
     # Sorting in both directions, limits and offsets.
     assert ids(ascend_by=[is_active], descend_by=[customer_id]) == [2, 3, 1]
     assert ids(descend_by=[customer_id]) == [3, 2, 1]
-    assert ids(top=2, ascend_by=[customer_id]) == [1, 2]
-    assert ids(top=1, offset=1, ascend_by=[customer_id]) == [2]
+    assert ids(limit=2, ascend_by=[customer_id]) == [1, 2]
+    assert ids(limit=1, offset=1, ascend_by=[customer_id]) == [2]
     assert ids(offset=2, ascend_by=[customer_id]) == [3]
-    assert ids(top=0, ascend_by=[customer_id]) == []
+    assert ids(limit=0, ascend_by=[customer_id]) == []
 
     # Identity column and foreign key.
     client.insert(orders, columns=[order_customer, total]).execute_many(
-        param_tuple_list=[(1, 10.0), (1, 20.0), (2, 5.0)]
+        parameters_list=[(1, 10.0), (1, 20.0), (2, 5.0)]
     )
 
     assert client.select(orders, ascend_by=[order_id]).execute() == (
@@ -154,9 +164,9 @@ def run_scenario(client: IClient) -> None:
     )
 
     with pytest.raises(Exception):  # noqa: B017
-        client.insert(orders, columns=[order_customer, total]).execute(param_tuple=(99, 1.0))
+        client.insert(orders, columns=[order_customer, total]).execute(parameters=(99, 1.0))
 
-    assert client.get_length(orders).execute() == 3
+    assert client.count_rows(orders).execute() == 3
 
     # Aggregates.
     assert client.select(
@@ -171,6 +181,39 @@ def run_scenario(client: IClient) -> None:
     assert client.select(customers, columns=[created.min(), joined.max()]).execute() == (
         (datetime(2024, 1, 5, 8, 30, 0), date(2024, 2, 1)),
     )
+
+    # Groups which satisfy a condition on an aggregate.
+    assert client.select(
+        orders,
+        columns=[order_customer, total.sum()],
+        group_by=[order_customer],
+        having=total.sum() > 10,
+        ascend_by=[order_customer],
+    ).execute() == ((1, 30.0),)
+
+    assert client.select(
+        orders,
+        columns=[order_customer, orders.count()],
+        condition=total > 6,
+        group_by=[order_customer],
+        having=(orders.count() >= 1) & total.max().is_between(15, 25),
+    ).execute() == ((1, 2),)
+
+    # A table joined to itself, through an alias.
+    other = orders.alias("other order")
+    other_id, other_customer, other_total = other.columns
+
+    assert client.select(
+        orders,
+        columns=[order_id, other_id, other_total],
+        joins=[
+            Join(
+                table=other,
+                condition=(order_customer == other_customer) & (total < other_total),
+            )
+        ],
+        ascend_by=[order_id],
+    ).execute() == ((1, 2, 20.0),)
 
     # Joins.
     assert client.select(
@@ -195,7 +238,7 @@ def run_scenario(client: IClient) -> None:
     ).execute() == ((2,), (1,))
 
     assert client.union(
-        structure_list=(customers, orders),
+        table_list=(customers, orders),
         query_list=(
             client.select(customers, columns=[customer_id], condition=customer_id > 1),
             client.select(orders, columns=[order_customer], condition=total < 15),
@@ -214,15 +257,15 @@ def run_scenario(client: IClient) -> None:
     )
 
     for one_index in (index, unique_index):
-        assert client.is_exists(one_index).execute() is False
+        assert client.exists(one_index).execute() is False
         client.create(one_index).execute()
-        assert client.is_exists(one_index).execute() is True
+        assert client.exists(one_index).execute() is True
         client.drop(one_index).execute()
-        assert client.is_exists(one_index).execute() is False
+        assert client.exists(one_index).execute() is False
 
     # Updates, whose own parameters come before those of the condition.
     client.update(customers, columns=[score, notes], condition=name == "Ada").execute(
-        param_tuple=(9.5, "new")
+        parameters=(9.5, "new")
     )
 
     assert client.select(
@@ -230,7 +273,7 @@ def run_scenario(client: IClient) -> None:
     ).execute() == ((9.5, "new"),)
 
     client.update(customers, columns=[score], condition=customer_id < 3).execute_many(
-        param_tuple_list=[(7.0,)]
+        parameters_list=[(7.0,)]
     )
 
     assert sorted_ids(score == 7.0) == [1, 2]
@@ -248,7 +291,7 @@ def run_scenario(client: IClient) -> None:
         with client.transaction():
             client.delete(customers, condition=customer_id == 3).execute()
             assert bool(client.is_in_transaction) is True
-            assert client.get_length(customers).execute() == 2
+            assert client.count_rows(customers).execute() == 2
 
             with pytest.raises(TransactionError):
                 client.begin()
@@ -256,24 +299,24 @@ def run_scenario(client: IClient) -> None:
             raise ZeroDivisionError
 
     assert bool(client.is_in_transaction) is False
-    assert client.get_length(customers).execute() == 3
+    assert client.count_rows(customers).execute() == 3
 
     with client.transaction():
         client.delete(customers, condition=customer_id == 3).execute()
 
-    assert client.get_length(customers).execute() == 2
+    assert client.count_rows(customers).execute() == 2
 
     client.begin()
     client.delete(orders, condition=total > 15).execute()
     client.rollback()
 
-    assert client.get_length(orders).execute() == 3
+    assert client.count_rows(orders).execute() == 3
 
     client.begin()
     client.delete(orders, condition=total > 15).execute()
     client.commit()
 
-    assert client.get_length(orders).execute() == 2
+    assert client.count_rows(orders).execute() == 2
 
     # Emptying and dropping.
     client.truncate(orders).execute()
@@ -283,5 +326,5 @@ def run_scenario(client: IClient) -> None:
     client.drop(orders).execute()
     client.drop(customers).execute()
 
-    assert client.is_exists(orders).execute() is False
-    assert client.is_exists(customers).execute() is False
+    assert client.exists(orders).execute() is False
+    assert client.exists(customers).execute() is False

@@ -10,31 +10,32 @@ from ..structures import Table
 from .query import Query
 
 if TYPE_CHECKING:
-    from ..clients.i_client import IClient
+    from ..clients.client import Client
 
 
 class Reflect(Query):
     """Query which reads the columns of a table from the database.
 
     The result is a table with the columns found in the database, to use in
-    other queries. Foreign keys are not read.
+    other queries. Its foreign keys are read as well, with the columns of the
+    tables they refer to.
 
     :param client: the client which executes the query
-    :param structure: the table to read the columns of, given without
+    :param table: the table to read the columns of, given without
         columns. It is not changed.
     """
 
-    def __init__(self, client: IClient, structure: Table) -> None:
+    def __init__(self, client: Client, table: Table) -> None:
         super().__init__(client=client)
 
-        self.__structure = structure
+        self.__table = table
 
     @property
-    def structure(self) -> Table:
+    def table(self) -> Table:
         """Table to read the columns of."""
-        return self.__structure
+        return self.__table
 
     @override
-    def execute(self, param_tuple: Sequence[Any] | None = None) -> Table:
-        table: Table = super().execute(param_tuple)
+    def execute(self, parameters: Sequence[Any] | None = None) -> Table:
+        table: Table = super().execute(parameters)
         return table

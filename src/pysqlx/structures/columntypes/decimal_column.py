@@ -20,7 +20,7 @@ class DecimalColumn(Column):
     :param scale: the number of digits after the decimal point
     :param default_value: the default value of the column, if any
     :param is_primary_key: whether the column is part of the primary key
-    :param is_prevent_null: whether the column rejects null values
+    :param is_required: whether the column rejects null values
     :raises InvalidArgumentError: if the precision or the scale is invalid
     """
 
@@ -32,7 +32,7 @@ class DecimalColumn(Column):
         scale: int,
         default_value: Any,
         is_primary_key: bool,
-        is_prevent_null: bool,
+        is_required: bool,
     ) -> None:
         super().__init__(
             column_name=column_name,
@@ -40,7 +40,7 @@ class DecimalColumn(Column):
             default_value=default_value,
             is_identity=False,
             is_primary_key=is_primary_key,
-            is_prevent_null=is_prevent_null,
+            is_required=is_required,
         )
 
         if not isinstance(precision, int) or precision < 1:
