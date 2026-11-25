@@ -202,4 +202,4 @@ jobs:
         run: uv sync --locked --no-default-groups --group test
 
       - name: Run the tests
-        run: uv run --no-sync pytest tests/clients/test_pyodbc.py
+        run: uv run --no-sync pytest tests/clients/test_sql_server_client.py
