@@ -55,6 +55,8 @@ Run ``make`` without arguments to list the targets.
      - build this documentation, treating warnings as errors
    * - ``make docs-live``
      - serve the documentation and rebuild it on changes
+   * - ``make docs-images``
+     - regenerate the figures shown in the documentation
    * - ``make version``
      - show the version derived from the git tags
    * - ``make build``
@@ -192,6 +194,8 @@ Keep the documentation in step with the code. A change to the behavior or to
 the interface of the library updates, in the same pull request:
 
 * the guide page of the feature in ``docs/guide``, including its examples
+* the figures, which ``docs/scripts/make_images.py`` writes to
+  ``docs/_static`` for the light and for the dark theme
 * the "Unreleased" section of ``docs/project/changelog.rst``
 * ``README.md`` when the change affects what a first-time reader should know
 

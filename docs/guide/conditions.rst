@@ -71,6 +71,16 @@ When a query is executed, the values of its condition are not written into
 the SQL. The statement is sent with a placeholder for each value, and the
 values are passed to the database separately:
 
+.. image:: /_static/parameters-light.svg
+    :alt: A condition is split into a statement with a placeholder and a list of parameters
+    :width: 100%
+    :class: only-light
+
+.. image:: /_static/parameters-dark.svg
+    :alt: A condition is split into a statement with a placeholder and a list of parameters
+    :width: 100%
+    :class: only-dark
+
 .. code-block:: python
 
     query = client.select(customers, condition=name == "O'Brien")

@@ -187,6 +187,16 @@ relates the rows of the two tables, usually by comparing two columns.
     print(query.execute())
     # (('Ada', 42.0), ('Grace', 80.5), ('Ada', 120.0))
 
+.. image:: /_static/joins-light.svg
+    :alt: The rows which an inner, a left, a right and a full join keep
+    :width: 100%
+    :class: only-light
+
+.. image:: /_static/joins-dark.svg
+    :alt: The rows which an inner, a left, a right and a full join keep
+    :width: 100%
+    :class: only-dark
+
 The ``kind`` of a join says which rows without a match are kept: none for
 ``"inner"``, the default, those of the table of the query for ``"left"``,
 those of the joined table for ``"right"``, and both for ``"full"``.

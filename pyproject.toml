@@ -111,6 +111,7 @@ ignore-decorators = ["pysqlx._compat.override"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
 "docs/conf.py" = ["D"]
+"docs/scripts/*.py" = ["T20"]
 
 
 [tool.mypy]
