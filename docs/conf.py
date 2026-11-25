@@ -1,5 +1,7 @@
 """Sphinx configuration for the pysqlx documentation."""
 
+import os
+import re
 import sys
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _dist_version
@@ -21,7 +23,18 @@ except PackageNotFoundError as exc:  # pragma: no cover
         "run `uv sync --dev` (or `pip install .`) first."
     ) from exc
 
-version = ".".join(release.split(".")[:2])
+# Between releases the version of the package is a development version, such
+# as 2.0.1.dev3+g1a2b3c4. Show the commit which the documentation was built
+# from instead, which is what tells two such builds apart.
+_commit = re.search(r"\+g([0-9a-f]{7})", release)
+
+if ".dev" in release:
+    release = os.environ.get("READTHEDOCS_GIT_COMMIT_HASH", "")[:7] or (
+        _commit.group(1) if _commit else release
+    )
+    version = release
+else:
+    version = ".".join(release.split(".")[:2])
 
 # -- General configuration ----------------------------------------------------
 
