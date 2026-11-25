@@ -208,7 +208,10 @@ With Docker, ``make servers-up`` starts a PostgreSQL and a MySQL server,
 ``make servers-down`` stops them. CI runs the scenario against the three
 servers on Linux in the ``servers-linux`` job, and against SQL Server on
 Windows and macOS in the ``sql-server-desktop`` job. The ``unit`` job runs the
-whole test suite with SQLite on every supported system and version of Python.
+whole test suite with SQLite on every supported system and version of Python,
+except that macOS only runs the oldest and the newest version.
+
+A new push to a pull request cancels the runs of its previous push.
 
 The SQL which each dialect writes for a set of queries is compared with the
 files of ``tests/dialects/std``. When the SQL changes on purpose, review the
