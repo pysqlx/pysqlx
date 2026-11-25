@@ -1102,8 +1102,8 @@ test = [
 
 [package.metadata]
 requires-dist = [
-    { name = "psycopg", extras = ["binary"], marker = "extra == 'all'", specifier = ">=3.2.0" },
-    { name = "psycopg", extras = ["binary"], marker = "extra == 'postgresql'", specifier = ">=3.2.0" },
+    { name = "psycopg", extras = ["binary"], marker = "extra == 'all'", specifier = ">=3.3.9" },
+    { name = "psycopg", extras = ["binary"], marker = "extra == 'postgresql'", specifier = ">=3.3.9" },
     { name = "pymysql", marker = "extra == 'all'", specifier = ">=1.1.0" },
     { name = "pymysql", marker = "extra == 'mysql'", specifier = ">=1.1.0" },
     { name = "pyodbc", marker = "extra == 'all'", specifier = ">=5.2.0" },
@@ -1115,7 +1115,7 @@ provides-extras = ["all", "mysql", "odbc", "postgresql"]
 dev = [
     { name = "furo", specifier = ">=2025.9.25" },
     { name = "mypy", specifier = ">=1.19.1" },
-    { name = "psycopg", extras = ["binary"], specifier = ">=3.2.0" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.3.9" },
     { name = "pymysql", specifier = ">=1.1.0" },
     { name = "pyodbc", specifier = ">=5.2.0" },
     { name = "pytest", specifier = ">=9.0.2" },
@@ -1135,7 +1135,7 @@ lint = [
     { name = "ruff", specifier = ">=0.14.0" },
 ]
 test = [
-    { name = "psycopg", extras = ["binary"], specifier = ">=3.2.0" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.3.9" },
     { name = "pymysql", specifier = ">=1.1.0" },
     { name = "pyodbc", specifier = ">=5.2.0" },
     { name = "pytest", specifier = ">=9.0.2" },
