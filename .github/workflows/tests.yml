@@ -150,12 +150,41 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
 
-      - name: Install SQL Server
+      - name: Install SQL Server (Windows)
+        if: runner.os == 'Windows'
+        # Windows runners already have the ODBC driver.
         uses: potatoqualitee/mssqlsuite@bc850f242e5fe551e36cea6fa4bed608c58fa489 # v2
         with:
-          # Windows runners already have the ODBC driver.
-          install: ${{ runner.os == 'macOS' && 'sqlengine, sqlclient' || 'sqlengine' }}
+          install: sqlengine
           sa-password: Pysqlx_test_1
+
+      - name: Start SQL Server in a container (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install docker colima
+          colima start --cpu 2 --memory 4
+          docker run -d --name mssql -e ACCEPT_EULA=Y -e MSSQL_SA_PASSWORD=Pysqlx_test_1 \
+            -p 1433:1433 mcr.microsoft.com/mssql/server:2022-latest
+
+      - name: Install the ODBC driver for SQL Server (macOS)
+        if: runner.os == 'macOS'
+        env:
+          HOMEBREW_ACCEPT_EULA: "Y"
+        run: |
+          brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
+          brew install msodbcsql18
+
+      - name: Wait for SQL Server (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          for attempt in $(seq 1 60); do
+            if docker logs mssql 2>&1 | grep -q "SQL Server is now ready for client connections"; then
+              exit 0
+            fi
+            sleep 5
+          done
+          docker logs mssql
+          exit 1
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
