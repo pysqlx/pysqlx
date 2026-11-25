@@ -260,6 +260,15 @@ def test_sqlite3_invalid_arguments(tmp_path: Path) -> None:
     with pytest.raises(InvalidArgumentError):
         ClientFactory.get_sqlite3_client(directory_path=str(tmp_path))
 
+    # The name of the database must not lead out of the directory.
+    for database_name in ("../outside", "a/b", "..", "."):
+        with pytest.raises(InvalidArgumentError):
+            ClientFactory.get_sqlite3_client(
+                directory_path=str(tmp_path), database_name=database_name
+            )
+
+    assert list(tmp_path.parent.glob("outside.db")) == []
+
     # The exceptions of the package are also the RuntimeError of earlier versions.
     with pytest.raises(RuntimeError):
         ClientFactory.get_sqlite3_client(driver_name="nope")

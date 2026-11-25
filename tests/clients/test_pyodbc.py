@@ -100,6 +100,28 @@ def test_pyodbc_connection(fake_pyodbc: Any) -> None:
     )
 
 
+def test_pyodbc_connection_string_escaping(fake_pyodbc: Any) -> None:
+    ClientFactory.get_pyodbc_client(
+        server_address="h;Trusted_Connection=yes",
+        user_name="u{1}",
+        user_pass="p;Encrypt=no",
+        database_name=" shop",
+        connection_options={"Encrypt": "yes;TrustServerCertificate=yes"},
+    )
+
+    # Values which could add attributes are enclosed in braces.
+    assert fake_pyodbc.connections[-1].connection_string == (
+        "DRIVER=ODBC Driver 18 for SQL Server;UID={u{1}}};SERVER={h;Trusted_Connection=yes};"
+        "DATABASE={ shop};Encrypt={yes;TrustServerCertificate=yes};PWD={p;Encrypt=no}"
+    )
+
+    for name in ("Encrypt;x", "a=b", "", "{x}"):
+        with pytest.raises(InvalidArgumentError):
+            ClientFactory.get_pyodbc_client(
+                server_address="h", user_name="u", user_pass="p", connection_options={name: "1"}
+            )
+
+
 def test_pyodbc_invalid_arguments(fake_pyodbc: Any) -> None:
     def connect(**arguments: Any) -> Pyodbc:
         return ClientFactory.get_pyodbc_client(

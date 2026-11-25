@@ -40,9 +40,9 @@ SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='customers'
 -- exists_plain_table
 SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='orders'
 -- exists_database
-UnsupportedOperationError: database checks is not supported in SQLite
+UnsupportedOperationError: database checks are not supported in SQLite
 -- exists_schema
-UnsupportedOperationError: schema checks is not supported in SQLite
+UnsupportedOperationError: schema checks are not supported in SQLite
 -- exists_index
 SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='by name'
 -- empty

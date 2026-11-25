@@ -1,6 +1,7 @@
 """Factory of the clients."""
 
 from collections.abc import Mapping, Sequence
+from typing import Any
 
 from .i_client import IClient
 from .psycopg import Psycopg
@@ -117,7 +118,7 @@ class ClientFactory:
             installed driver by default.
         :param database_name: the name of the database to connect to, if any
         :param connection_options: more attributes for the connection string,
-            such as ``{"TrustServerCertificate": "yes"}``
+            such as ``{"Encrypt": "yes"}``
         :returns: the client, connected to the server
         :raises InvalidArgumentError: if an argument is invalid
         :raises MissingDependencyError: if ``pyodbc`` is not installed
@@ -143,6 +144,7 @@ class ClientFactory:
         dialect_name: str = "postgresql",
         server_port: int | None = None,
         database_name: str | None = None,
+        connection_options: Mapping[str, Any] | None = None,
     ) -> Psycopg:
         """Create a client for a PostgreSQL server.
 
@@ -153,6 +155,9 @@ class ClientFactory:
         :param server_port: the port of the server, if not the default one
         :param database_name: the name of the database to connect to. The
             default database of the user by default.
+        :param connection_options: more arguments for the connection of
+            ``psycopg``, for example to require an encrypted connection, such
+            as ``{"sslmode": "verify-full"}``
         :returns: the client, connected to the server
         :raises InvalidArgumentError: if an argument is invalid
         :raises MissingDependencyError: if ``psycopg`` is not installed
@@ -165,6 +170,7 @@ class ClientFactory:
             server_port=server_port,
             dialect_name=dialect_name,
             database_name=database_name,
+            connection_options=connection_options,
         )
 
     @staticmethod
@@ -175,6 +181,7 @@ class ClientFactory:
         dialect_name: str = "mysql",
         server_port: int | None = None,
         database_name: str | None = None,
+        connection_options: Mapping[str, Any] | None = None,
     ) -> Pymysql:
         """Create a client for a MySQL or MariaDB server.
 
@@ -184,6 +191,9 @@ class ClientFactory:
         :param dialect_name: the name of the dialect, ``"mysql"``
         :param server_port: the port of the server, if not the default one
         :param database_name: the name of the database to connect to, if any
+        :param connection_options: more arguments for the connection of
+            ``pymysql``, for example to require an encrypted connection, such as
+            ``{"ssl_verify_identity": True, "ssl_ca": "ca.pem"}``
         :returns: the client, connected to the server
         :raises InvalidArgumentError: if an argument is invalid
         :raises MissingDependencyError: if ``pymysql`` is not installed
@@ -196,4 +206,5 @@ class ClientFactory:
             server_port=server_port,
             dialect_name=dialect_name,
             database_name=database_name,
+            connection_options=connection_options,
         )

@@ -1,10 +1,10 @@
 """SQLite client."""
 
-import os
 import sqlite3
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import Any, Self
 
 from .._compat import override
@@ -46,7 +46,6 @@ def _get_connection(
     directory_path: str | None,
     driver_name: str,
     database_name: str | None,
-    _info: Callable[[str], None],
 ) -> sqlite3.Connection:
     if driver_name == _disk_driver:
         if directory_path is None:
@@ -55,11 +54,15 @@ def _get_connection(
         if database_name is None:
             raise InvalidArgumentError(f'database_name is invalid "{database_name}"')
 
-        file_path = os.path.join(directory_path, database_name + ".db")
+        # The name is part of a file name, and must not lead out of the directory.
+        if Path(database_name).name != database_name or database_name in (".", ".."):
+            raise InvalidArgumentError(f'database_name is invalid "{database_name}"')
+
+        file_path = str(Path(directory_path) / (database_name + ".db"))
     else:
         file_path = ":memory:"
 
-    _info(f'opening database at "{file_path}"')
+    logger.info('opening database at "%s"', file_path)
 
     try:
         conn = sqlite3.connect(file_path, isolation_level=None)
@@ -131,7 +134,7 @@ class SqliteThree(IClient):
 
         if driver_name == _disk_driver:
             if directory_path is not None:
-                directory_path = os.path.abspath(directory_path)
+                directory_path = str(Path(directory_path).resolve())
 
             if not self._is_valid_directory_path(directory_path):
                 raise InvalidArgumentError(f'directory_path is invalid "{directory_path}"')
@@ -141,7 +144,6 @@ class SqliteThree(IClient):
                 directory_path,
                 driver_name,
                 database_name,
-                logger.info,
             )
         )
         self._set_dialect(dialect_name)

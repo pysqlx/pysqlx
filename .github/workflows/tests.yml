@@ -1,17 +1,20 @@
 name: Tests
 
 on:
-  push:
-    branches: [master]
   pull_request:
     branches: [master]
+  schedule:
+    # Daily on the default branch, which keeps the badge of the README current
+    # and finds what changes outside the repository break.
+    - cron: "23 5 * * *"
 
 permissions:
   contents: read
 
 jobs:
-  tests:
-    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+  # The whole test suite with SQLite, which needs no database server.
+  unit:
+    name: Unit tests / ${{ matrix.os }} / Python ${{ matrix.python-version }}
 
     strategy:
       matrix:
@@ -38,8 +41,9 @@ jobs:
       - name: Run the tests
         run: uv run --no-sync pytest -n auto --cov --cov-report=term-missing:skip-covered
 
-  servers:
-    name: Database servers
+  # The clients against real servers, which run as containers on Linux only.
+  servers-linux:
+    name: PostgreSQL, MySQL and SQL Server / Linux
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -129,7 +133,8 @@ jobs:
       - name: Run the tests
         run: uv run --no-sync pytest tests/clients
 
-  sql-server:
+  # The ODBC client where the servers of servers-linux cannot run.
+  sql-server-desktop:
     name: SQL Server / ${{ matrix.os }}
 
     strategy:

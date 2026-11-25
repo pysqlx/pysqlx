@@ -123,7 +123,7 @@ rows with the same values in its columns.
 
 .. code-block:: python
 
-    from pysqlx.structures import Index
+    from pysqlx import Index
 
     index = Index(index_name="orders_by_customer", table=orders, columns=[customer_id])
 

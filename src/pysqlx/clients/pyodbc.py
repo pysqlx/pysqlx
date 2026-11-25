@@ -1,12 +1,10 @@
 """ODBC client."""
 
-from collections.abc import Callable, Mapping, Sequence
-from time import time
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from .._compat import override
-from ..exceptions import ConnectionFailedError, InvalidArgumentError, MissingDependencyError
-from ..logger import logger
+from ..exceptions import InvalidArgumentError, MissingDependencyError
 from .i_client import IClient
 
 _preferred_drivers: dict[str, tuple[str, ...]] = {
@@ -37,7 +35,17 @@ def _import_pyodbc() -> Any:
     return pyodbc
 
 
-def _get_connection(
+def _escape(value: object) -> str:
+    """Write a value of a connection string, so that it cannot add attributes."""
+    text = str(value)
+
+    if text and not any(char in text for char in ";{}") and text == text.strip():
+        return text
+
+    return "{" + text.replace("}", "}}") + "}"
+
+
+def _get_connection_string(
     server_address: str,
     user_name: str,
     user_pass: str,
@@ -46,45 +54,32 @@ def _get_connection(
     driver_name: str,
     database_name: str | None,
     connection_options: Mapping[str, str] | None,
-    _info: Callable[[str], None],
-) -> Any:
-    pyodbc = _import_pyodbc()
-
-    tic = time()
-
-    _info(f'authenticating for user "{user_name}"')
-
+) -> str:
     conn_ar = [
-        f"DRIVER={driver_name}",
-        f"UID={user_name}",
+        f"DRIVER={_escape(driver_name)}",
+        f"UID={_escape(user_name)}",
     ]
 
     if server_port:
-        conn_ar.append(f"SERVER={server_address},{server_port}")
+        conn_ar.append(f"SERVER={_escape(f'{server_address},{server_port}')}")
     else:
-        conn_ar.append(f"SERVER={server_address}")
+        conn_ar.append(f"SERVER={_escape(server_address)}")
 
     if database_name:
-        conn_ar.append(f"DATABASE={database_name}")
+        conn_ar.append(f"DATABASE={_escape(database_name)}")
 
     if is_trusted_connection:
         conn_ar.append("Trusted_Connection=Yes")
 
     for key, value in (connection_options or {}).items():
-        conn_ar.append(f"{key}={value}")
+        if not isinstance(key, str) or not key.strip() or any(char in key for char in ";={}"):
+            raise InvalidArgumentError(f'connection_options has an invalid name "{key}"')
 
-    conn_ar.append("PWD=")
+        conn_ar.append(f"{key}={_escape(value)}")
 
-    _info(f'connection string "{";".join(conn_ar)}*"')
+    conn_ar.append(f"PWD={_escape(user_pass)}")
 
-    try:
-        conn = pyodbc.connect(";".join(conn_ar) + user_pass, autocommit=True)
-    except Exception as e:
-        raise ConnectionFailedError("could not authenticate DB, check username and password") from e
-
-    _info(f"connection initalized in {time() - tic} seconds")
-
-    return conn
+    return ";".join(conn_ar)
 
 
 class Pyodbc(IClient):
@@ -104,7 +99,7 @@ class Pyodbc(IClient):
         preferred installed driver
     :param database_name: the name of the database to connect to, or ``None``
     :param connection_options: more attributes for the connection string,
-        such as ``{"TrustServerCertificate": "yes"}``
+        such as ``{"Encrypt": "yes"}``
     :raises InvalidArgumentError: if an argument is invalid
     :raises MissingDependencyError: if ``pyodbc`` is not installed
     :raises ConnectionFailedError: if the connection fails
@@ -162,18 +157,21 @@ class Pyodbc(IClient):
         if not self._is_valid_driver(dialect_name, driver_name):
             raise InvalidArgumentError(f'driver_name is invalid "{driver_name}"')
 
+        pyodbc = _import_pyodbc()
+
+        connection_string = _get_connection_string(
+            server_address,
+            user_name,
+            user_pass,
+            server_port,
+            is_trusted_connection,
+            driver_name,
+            database_name,
+            connection_options,
+        )
+
         self._set_connection(
-            _get_connection(
-                server_address,
-                user_name,
-                user_pass,
-                server_port,
-                is_trusted_connection,
-                driver_name,
-                database_name,
-                connection_options,
-                logger.info,
-            )
+            self._connect(user_name, lambda: pyodbc.connect(connection_string, autocommit=True))
         )
         self._set_dialect(dialect_name)
 

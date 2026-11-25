@@ -67,9 +67,8 @@ class Union(Query):
 
         resolved_columns_list: list[Sequence[Column]] = []
 
-        for columns, structure in zip(columns_list, structure_list, strict=True):
-            if not columns:
-                columns = structure.columns
+        for given_columns, structure in zip(columns_list, structure_list, strict=True):
+            columns = given_columns or structure.columns
 
             if not check_cols(columns, structure.columns):
                 raise InvalidArgumentError("invalid columns")

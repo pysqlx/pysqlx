@@ -92,6 +92,7 @@ never written into the SQL.
    guide/transactions
    guide/errors
    guide/logging
+   guide/security
 
 .. toctree::
    :maxdepth: 2

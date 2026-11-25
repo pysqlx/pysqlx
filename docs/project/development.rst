@@ -145,7 +145,7 @@ Adding a database
    the library as an optional dependency.
 3. Add a method to :py:class:`~pysqlx.clients.ClientFactory`.
 4. Add tests which run the scenario of ``tests/clients/scenario.py``, the
-   expected SQL to ``tests/dialects/std``, and a server to the ``servers``
+   expected SQL to ``tests/dialects/std``, and a server to the ``servers-linux``
    job of ``.github/workflows/tests.yml``.
 
 Testing
@@ -177,8 +177,9 @@ servers which hold nothing else.
 With Docker, ``make servers-up`` starts a PostgreSQL and a MySQL server,
 ``make test-servers`` runs the tests of the clients against them and
 ``make servers-down`` stops them. CI runs the scenario against the three
-servers on Linux in the ``servers`` job, and against SQL Server on Windows
-and macOS in the ``sql-server`` job.
+servers on Linux in the ``servers-linux`` job, and against SQL Server on
+Windows and macOS in the ``sql-server-desktop`` job. The ``unit`` job runs the
+whole test suite with SQLite on every supported system and version of Python.
 
 The SQL which each dialect writes for a set of queries is compared with the
 files of ``tests/dialects/std``. When the SQL changes on purpose, review the
