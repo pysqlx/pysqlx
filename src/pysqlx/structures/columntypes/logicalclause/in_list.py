@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, Any
 
+from ...._compat import override
 from .clause import Clause
 
 if TYPE_CHECKING:

@@ -5,8 +5,9 @@ import sqlite3
 from collections.abc import Callable, Sequence
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Self, override
+from typing import Any, Self
 
+from .._compat import override
 from ..exceptions import ConnectionFailedError, InvalidArgumentError
 from ..logger import logger
 from .i_client import IClient

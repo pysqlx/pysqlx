@@ -8,7 +8,7 @@ name = "pysqlx"
 dynamic = ["version"]
 description = "A generic SQL driver package"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Bassem Girgis", email = "brgirgis@gmail.com" }]
@@ -20,6 +20,7 @@ classifiers = [
   "Natural Language :: English",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
@@ -104,6 +105,8 @@ ignore = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
+# The documentation of an overridden method is that of the base class.
+ignore-decorators = ["pysqlx._compat.override"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]

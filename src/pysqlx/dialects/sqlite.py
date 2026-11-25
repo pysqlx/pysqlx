@@ -1,8 +1,9 @@
 """SQLite dialect."""
 
 from collections.abc import Sequence
-from typing import Any, cast, override
+from typing import Any, cast
 
+from .._compat import override
 from ..exceptions import UnsupportedOperationError
 from ..queries import Create, Drop, IsExists, Reflect, Truncate
 from ..structures import (

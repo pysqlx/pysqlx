@@ -1,7 +1,6 @@
 """Conjunction of two clauses."""
 
-from typing import override
-
+from ...._compat import override
 from ....exceptions import InvalidArgumentError
 from .clause import Clause
 
