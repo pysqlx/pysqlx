@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, override
 
-from ..structures import Clause, Column, Table
+from ..exceptions import InvalidArgumentError
+from ..structures import Aggregate, Clause, Column, Join, Table
 from .query import Query
-from .utility import check_cols, check_order_by_cols
+from .utility import check_cols, check_order_by_cols, has_col
 
 if TYPE_CHECKING:
     from ..clients.i_client import IClient
@@ -19,11 +20,16 @@ class Select(Query):
     :param client: the client which executes the query
     :param structure: the table to read from
     :param top: the maximum number of rows to read. All rows by default.
-    :param columns: the columns to read. All columns of the table by default.
+    :param columns: the columns and the aggregates to read. All columns of
+        the table, and of the joined tables, by default.
     :param ascend_by: the columns to sort by in ascending order
     :param descend_by: the columns to sort by in descending order
     :param condition: the condition which the rows satisfy
-    :raises RuntimeError: if an argument is invalid
+    :param offset: the number of rows to skip before reading
+    :param group_by: the columns which define the groups of rows which the
+        aggregates are computed over
+    :param joins: the tables to join to the table of the query
+    :raises InvalidArgumentError: if an argument is invalid
     """
 
     def __init__(
@@ -31,30 +37,52 @@ class Select(Query):
         client: IClient,
         structure: Table,
         top: int | None,
-        columns: Sequence[Column] | None,
+        columns: Sequence[Column | Aggregate] | None,
         ascend_by: Sequence[Column] | None,
         descend_by: Sequence[Column] | None,
         condition: Clause | None,
+        offset: int | None = None,
+        group_by: Sequence[Column] | None = None,
+        joins: Sequence[Join] | None = None,
     ) -> None:
         super().__init__(client=client)
 
-        if top and not isinstance(top, int):
-            raise RuntimeError(f'invalid top "{top}"')
+        if top is not None and (isinstance(top, bool) or not isinstance(top, int) or top < 0):
+            raise InvalidArgumentError(f'invalid top "{top}"')
+
+        if offset is not None and (
+            isinstance(offset, bool) or not isinstance(offset, int) or offset < 0
+        ):
+            raise InvalidArgumentError(f'invalid offset "{offset}"')
+
+        available: list[Column] = list(structure.columns)
+
+        for join in joins or ():
+            if not isinstance(join, Join):
+                raise InvalidArgumentError("invalid joins")
+
+            available += join.table.columns
 
         if not columns:
-            columns = structure.columns
+            columns = available
 
-        if not check_cols(columns, structure.columns):
-            raise RuntimeError("invalid columns")
+        for item in columns:
+            column = item.column if isinstance(item, Aggregate) else item
 
-        if ascend_by and not check_cols(ascend_by, columns):
-            raise RuntimeError("invalid ascend_by")
+            if column is not None and not has_col(column, available):
+                raise InvalidArgumentError("invalid columns")
 
-        if descend_by and not check_cols(descend_by, columns):
-            raise RuntimeError("invalid descend_by")
+        if ascend_by and not check_cols(ascend_by, available):
+            raise InvalidArgumentError("invalid ascend_by")
+
+        if descend_by and not check_cols(descend_by, available):
+            raise InvalidArgumentError("invalid descend_by")
 
         if not check_order_by_cols(ascend_by, descend_by):
-            raise RuntimeError("invalid ascend_by and descend_by")
+            raise InvalidArgumentError("invalid ascend_by and descend_by")
+
+        if group_by and not check_cols(group_by, available):
+            raise InvalidArgumentError("invalid group_by")
 
         self.__structure = structure
         self.__top = top
@@ -62,6 +90,9 @@ class Select(Query):
         self.__ascend_by = ascend_by
         self.__descend_by = descend_by
         self.__condition = condition
+        self.__offset = offset
+        self.__group_by = group_by
+        self.__joins = joins
 
     @property
     def structure(self) -> Table:
@@ -74,8 +105,8 @@ class Select(Query):
         return self.__top
 
     @property
-    def columns(self) -> Sequence[Column]:
-        """Columns to read."""
+    def columns(self) -> Sequence[Column | Aggregate]:
+        """Columns and aggregates to read."""
         return self.__columns
 
     @property
@@ -92,3 +123,23 @@ class Select(Query):
     def condition(self) -> Clause | None:
         """Condition which the rows satisfy, or ``None``."""
         return self.__condition
+
+    @property
+    def offset(self) -> int | None:
+        """Number of rows to skip before reading, or ``None``."""
+        return self.__offset
+
+    @property
+    def group_by(self) -> Sequence[Column] | None:
+        """Columns which define the groups of rows, or ``None``."""
+        return self.__group_by
+
+    @property
+    def joins(self) -> Sequence[Join] | None:
+        """Tables joined to the table of the query, or ``None``."""
+        return self.__joins
+
+    @override
+    def execute(self, param_tuple: Sequence[Any] | None = None) -> tuple[tuple[Any, ...], ...]:
+        rows: tuple[tuple[Any, ...], ...] = super().execute(param_tuple)
+        return rows

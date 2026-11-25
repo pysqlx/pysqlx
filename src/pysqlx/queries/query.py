@@ -37,6 +37,6 @@ class Query:
         :param param_tuple_list: one sequence of parameter values per
             execution
         :returns: the result of the query, which depends on its type
-        :raises RuntimeError: if the query does not support it
+        :raises UnsupportedOperationError: if the query does not support it
         """
         return self.__client.execute_many(query=self, param_tuple_list=param_tuple_list)

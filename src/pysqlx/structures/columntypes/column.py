@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
+from ...exceptions import InvalidArgumentError
 from ..structure import Structure
+from .aggregate import Aggregate
 from .logicalclause import (
     Between,
     Equal,
@@ -29,6 +31,11 @@ class Column(Structure):
 
     Comparing a column with a value using ``==``, ``!=``, ``>``, ``>=``,
     ``<`` or ``<=`` creates a clause to use as the condition of a query.
+    Because of that, use ``is`` to check whether two variables hold the same
+    column.
+
+    The default value is written into the SQL as it is, so a string needs
+    its own quotes: ``default_value="'new'"``.
 
     :param column_name: the name of the column
     :param table: the table which the column belongs to
@@ -38,8 +45,8 @@ class Column(Structure):
     :param is_primary_key: whether the column is part of the primary key
     :param is_prevent_null: whether the column rejects null values. Identity
         and primary key columns always do.
-    :raises RuntimeError: if an identity or primary key column is given a
-        default value
+    :raises InvalidArgumentError: if an identity or primary key column is
+        given a default value
     """
 
     def __init__(
@@ -56,8 +63,8 @@ class Column(Structure):
         if is_identity or is_primary_key:
             is_prevent_null = True
 
-        if default_value and any((is_identity, is_primary_key)):
-            raise RuntimeError("invalid default value settings")
+        if default_value is not None and any((is_identity, is_primary_key)):
+            raise InvalidArgumentError("invalid default value settings")
 
         self.__column_name = column_name
         self.__table = table
@@ -100,8 +107,16 @@ class Column(Structure):
         """Find the position of the column in its table.
 
         :returns: the index of the column in the columns of its table
+        :raises InvalidArgumentError: if the column was removed from its table
         """
-        return self.table.columns.index(self)
+        for index, column in enumerate(self.table.columns):
+            if column is self:
+                return index
+
+        raise InvalidArgumentError("column is not in its table")
+
+    def __hash__(self) -> int:
+        return id(self)
 
     def __eq__(self, other: object) -> Equal:  # type: ignore[override]
         return Equal(lhs=self, rhs=other)
@@ -160,3 +175,38 @@ class Column(Structure):
         :returns: the clause
         """
         return Like(column=self, value=other)
+
+    def count(self) -> Aggregate:
+        """Create an aggregate which counts the values which are not null.
+
+        :returns: the aggregate
+        """
+        return Aggregate(function_name="COUNT", column=self)
+
+    def sum(self) -> Aggregate:
+        """Create an aggregate which adds up the values.
+
+        :returns: the aggregate
+        """
+        return Aggregate(function_name="SUM", column=self)
+
+    def avg(self) -> Aggregate:
+        """Create an aggregate which averages the values.
+
+        :returns: the aggregate
+        """
+        return Aggregate(function_name="AVG", column=self)
+
+    def min(self) -> Aggregate:
+        """Create an aggregate which gives the smallest value.
+
+        :returns: the aggregate
+        """
+        return Aggregate(function_name="MIN", column=self)
+
+    def max(self) -> Aggregate:
+        """Create an aggregate which gives the largest value.
+
+        :returns: the aggregate
+        """
+        return Aggregate(function_name="MAX", column=self)

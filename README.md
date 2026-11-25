@@ -13,12 +13,7 @@ Work with SQL databases without writing SQL. Tables, conditions and queries are 
 ```python
 from pysqlx import ClientFactory, Table
 
-client = ClientFactory.get_sqlite3_client(
-    directory_path=None,
-    dialect_name="sqlite",
-    driver_name="memory",
-    database_name="shop",
-)
+client = ClientFactory.get_sqlite3_client()  # a database in memory
 
 orders = Table(table_name="orders")
 customer = orders.append_char_string_column(column_name="customer", size=50)
@@ -31,23 +26,26 @@ rows = client.select(orders, condition=total > 100).execute()
 # (('Ada', 120.0),)
 ```
 
-- **Two databases, one interface**: SQLite through `sqlite3`, and Microsoft SQL Server through `pyodbc`
+- **Four databases, one interface**: SQLite, PostgreSQL, MySQL and Microsoft SQL Server
 - **Conditions in Python**: `(customer == "Ada") & (total > 50)`, with `&`, `|` and `~`
-- **Inspectable**: `client.get_query_string(query)` shows the SQL before anything is sent
+- **Safe by construction**: values are always passed to the database as parameters, never written into the SQL
+- **More than tables**: joins, aggregates, indexes, foreign keys and transactions
+- **Inspectable**: `client.get_query_string(query)` shows the SQL of a query
 - **Typed**: type hints throughout, checked with mypy in strict mode
-- **Light**: depends only on `pyodbc`
+- **Light**: no required dependency; the library of each database server is an extra
 
 Full documentation: **https://pysqlx.readthedocs.io/**
 
 ## Installation
 
 ```shell
-pip install pysqlx
+pip install pysqlx                 # SQLite
+pip install "pysqlx[postgresql]"   # PostgreSQL, with psycopg
+pip install "pysqlx[mysql]"        # MySQL and MariaDB, with pymysql
+pip install "pysqlx[odbc]"         # Microsoft SQL Server, with pyodbc
 ```
 
-`pysqlx` requires Python 3.12 or newer and `pyodbc` 5.2 or newer.
-
-On macOS, `pyodbc` needs unixODBC, also when only SQLite is used: `brew install unixodbc`.
+`pysqlx` requires Python 3.12 or newer.
 
 ## Quickstart
 
@@ -56,10 +54,12 @@ On macOS, `pyodbc` needs unixODBC, also when only SQLite is used: `brew install 
 A table starts without columns. Each `append_*_column` method adds a column and returns it.
 
 ```python
-from pysqlx import Table
+from pysqlx import ClientFactory, Table
+
+client = ClientFactory.get_sqlite3_client()
 
 orders = Table(table_name="orders")
-order_id = orders.append_integer_column(column_name="id", is_primary_key=True)
+order_id = orders.append_integer_column(column_name="id", is_identity=True, is_primary_key=True)
 customer = orders.append_char_string_column(column_name="customer", size=50)
 placed = orders.append_datetime_column(column_name="placed")
 total = orders.append_float_column(column_name="total")
@@ -74,11 +74,11 @@ from datetime import datetime
 
 client.create(orders).execute()
 
-client.insert(orders).execute_many(
+client.insert(orders, columns=[customer, placed, total]).execute_many(
     param_tuple_list=[
-        (1, "Ada", datetime(2026, 1, 5), 120.0),
-        (2, "Grace", datetime(2026, 1, 7), 80.5),
-        (3, "Ada", datetime(2026, 2, 1), 42.0),
+        ("Ada", datetime(2026, 1, 5), 120.0),
+        ("Grace", datetime(2026, 1, 7), 80.5),
+        ("Ada", datetime(2026, 2, 1), 42.0),
     ]
 )
 
@@ -92,60 +92,76 @@ Comparing a column with a value gives a condition. Put each comparison in parent
 ```python
 query = client.select(
     orders,
-    columns=[customer, total],
+    columns=[order_id, total],
     condition=(customer == "Ada") & (total > 50),
 )
 
-print(query.execute())  # (('Ada', 120.0),)
+print(query.execute())  # ((1, 120.0),)
 print(client.get_query_string(query))
-# SELECT [customer],
-# [total] FROM orders WHERE ([customer] = 'Ada') AND ([total] > 50)
+# SELECT [id],
+# [total] FROM [orders] WHERE ([customer] = 'Ada') AND ([total] > 50)
 ```
 
-The values of a condition are written into the SQL as they are, without escaping. Do not build conditions from untrusted input.
+When the query is executed, `'Ada'` and `50` are passed to the database as parameters, so a value can contain any character and come from anywhere.
 
-### Change and remove rows
+### Aggregate and join
 
 ```python
-client.update(orders, columns=[total], condition=order_id == 3).execute(param_tuple=(45.0,))
-client.delete(orders, condition=customer == "Grace").execute()
+query = client.select(
+    orders,
+    columns=[customer, orders.count(), total.sum()],
+    group_by=[customer],
+    ascend_by=[customer],
+)
+
+print(query.execute())  # (('Ada', 2, 162.0), ('Grace', 1, 80.5))
 ```
 
-### Connect to SQL Server
+Tables are joined with `joins=[Join(table=..., condition=...)]`.
+
+### Change rows in a transaction
 
 ```python
-from pysqlx import ClientFactory
+with client.transaction():
+    client.update(orders, columns=[total], condition=order_id == 3).execute(param_tuple=(45.0,))
+    client.delete(orders, condition=customer == "Grace").execute()
+```
 
-client = ClientFactory.get_pyodbc_client(
+The changes take effect together at the end of the block, or not at all if it raises an exception.
+
+### Connect to a database server
+
+```python
+client = ClientFactory.get_psycopg_client(  # or get_pymysql_client, get_pyodbc_client
     server_address="db.example.com",
     user_name="reporting",
     user_pass="...",
-    dialect_name="mssql",
     database_name="shop",
 )
 ```
 
-The same tables and queries work with both clients.
+The same tables and queries work with every client. A client is closed with `close()` or by a `with` statement.
 
 ## Queries
 
 | Method of the client | Does | `execute()` returns |
 | --- | --- | --- |
-| `create`, `drop` | creates or drops a table, a schema or a database | `None` |
+| `create`, `drop` | creates or drops a table, an index, a schema or a database | `None` |
 | `is_exists` | checks whether a structure exists | a boolean |
+| `reflect` | reads the columns of an existing table | a table |
 | `is_empty`, `get_length` | checks for rows, counts the rows | a boolean, an integer |
 | `insert`, `update` | adds rows, changes rows | `None` |
 | `select`, `select_distinct`, `union` | reads rows | a tuple of rows |
 | `delete`, `truncate` | removes rows, removes all rows | `None` |
 
-Schemas and databases only exist on a SQL Server.
+SQLite has neither schemas nor databases to create.
 
 ## Documentation
 
 The documentation at https://pysqlx.readthedocs.io/ contains:
 
 - a [quickstart](https://pysqlx.readthedocs.io/en/latest/getting-started/quickstart.html)
-- a user guide for [clients](https://pysqlx.readthedocs.io/en/latest/guide/clients.html), [tables and columns](https://pysqlx.readthedocs.io/en/latest/guide/structures.html), [conditions](https://pysqlx.readthedocs.io/en/latest/guide/conditions.html) and [queries](https://pysqlx.readthedocs.io/en/latest/guide/queries.html)
+- a user guide for [clients](https://pysqlx.readthedocs.io/en/latest/guide/clients.html), [tables and columns](https://pysqlx.readthedocs.io/en/latest/guide/structures.html), [conditions](https://pysqlx.readthedocs.io/en/latest/guide/conditions.html), [queries](https://pysqlx.readthedocs.io/en/latest/guide/queries.html), [transactions](https://pysqlx.readthedocs.io/en/latest/guide/transactions.html) and [errors](https://pysqlx.readthedocs.io/en/latest/guide/errors.html)
 - a [changelog](https://pysqlx.readthedocs.io/en/latest/project/changelog.html)
 - an [API reference](https://pysqlx.readthedocs.io/en/latest/reference/index.html) for every class and method
 

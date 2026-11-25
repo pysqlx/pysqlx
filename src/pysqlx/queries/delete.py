@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, override
 
 from ..structures import Clause, Table
 from .query import Query
@@ -34,3 +35,7 @@ class Delete(Query):
     def condition(self) -> Clause:
         """Condition which the removed rows satisfy."""
         return self.__condition
+
+    @override
+    def execute(self, param_tuple: Sequence[Any] | None = None) -> None:
+        super().execute(param_tuple)

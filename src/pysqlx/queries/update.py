@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, override
 
+from ..exceptions import InvalidArgumentError
 from ..structures import Clause, Column, Table
 from .query import Query
 from .utility import check_cols
@@ -23,7 +24,7 @@ class Update(Query):
     :param columns: the columns to change. All columns of the table by
         default.
     :param condition: the condition which the changed rows satisfy
-    :raises RuntimeError: if the columns are invalid
+    :raises InvalidArgumentError: if the columns are invalid
     """
 
     def __init__(
@@ -39,7 +40,7 @@ class Update(Query):
             columns = structure.columns
 
         if not check_cols(columns, structure.columns):
-            raise RuntimeError("invalid columns")
+            raise InvalidArgumentError("invalid columns")
 
         self.__structure = structure
         self.__columns = columns
@@ -59,3 +60,11 @@ class Update(Query):
     def condition(self) -> Clause:
         """Condition which the changed rows satisfy."""
         return self.__condition
+
+    @override
+    def execute(self, param_tuple: Sequence[Any] | None = None) -> None:
+        super().execute(param_tuple)
+
+    @override
+    def execute_many(self, param_tuple_list: Sequence[Sequence[Any]]) -> None:
+        super().execute_many(param_tuple_list)

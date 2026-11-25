@@ -2,8 +2,13 @@ import csv
 from datetime import datetime
 from pathlib import Path
 
+import pytest
+
 from pysqlx.clients import ClientFactory, SqliteThree
-from pysqlx.structures import Table
+from pysqlx.exceptions import InvalidArgumentError, PysqlxError, UnsupportedOperationError
+from pysqlx.structures import Database, Schema, Table
+
+from .scenario import run_scenario
 
 param_tuple0 = (
     "some str",
@@ -80,7 +85,7 @@ def test_sqlite3_client(sqlite3_client: SqliteThree, local_table: Table, tmp_pat
         (param_tuple0[1], 10.0),
     )
 
-    ret = client.update(
+    client.update(
         table, columns=table.columns[1:3], condition=table.columns[1] == param_tuple0[1]
     ).execute(param_tuple=(datetime(1990, 1, 1), 20.0))
 
@@ -213,3 +218,101 @@ def test_sqlite3_client_union(sqlite3_client: SqliteThree) -> None:
     ret = q.execute()
 
     assert ret == (("Paris",), ("NYC",), ("Miami",), ("Los Angles",), ("London",), ("Cairo",))
+
+
+def test_sqlite3_scenario(sqlite3_client: SqliteThree) -> None:
+    run_scenario(sqlite3_client)
+
+
+def test_sqlite3_defaults(tmp_path: Path) -> None:
+    memory_client = ClientFactory.get_sqlite3_client()
+
+    assert memory_client.dialect_name == "sqlite"
+    assert memory_client.database_name is None
+
+    table = Table(table_name="t")
+    table.append_integer_column(column_name="a")
+
+    with ClientFactory.get_sqlite3_client(
+        directory_path=str(tmp_path), database_name="shop"
+    ) as disk_client:
+        disk_client.create(table).execute()
+
+    assert (tmp_path / "shop.db").is_file()
+
+
+def test_sqlite3_invalid_arguments(tmp_path: Path) -> None:
+    with pytest.raises(InvalidArgumentError):
+        ClientFactory.get_sqlite3_client(driver_name="nope")
+
+    with pytest.raises(InvalidArgumentError):
+        ClientFactory.get_sqlite3_client(dialect_name="mssql")
+
+    with pytest.raises(InvalidArgumentError):
+        ClientFactory.get_sqlite3_client(database_name="")
+
+    with pytest.raises(InvalidArgumentError):
+        ClientFactory.get_sqlite3_client(driver_name="disk")
+
+    with pytest.raises(InvalidArgumentError):
+        ClientFactory.get_sqlite3_client(directory_path=str(tmp_path / "missing"))
+
+    with pytest.raises(InvalidArgumentError):
+        ClientFactory.get_sqlite3_client(directory_path=str(tmp_path))
+
+    # The exceptions of the package are also the RuntimeError of earlier versions.
+    with pytest.raises(RuntimeError):
+        ClientFactory.get_sqlite3_client(driver_name="nope")
+
+
+def test_sqlite3_close() -> None:
+    client = ClientFactory.get_sqlite3_client()
+    table = Table(table_name="t")
+    table.append_integer_column(column_name="a")
+
+    assert bool(client.is_closed) is False
+
+    with client as same_client:
+        assert same_client is client
+        client.create(table).execute()
+
+    assert bool(client.is_closed) is True
+
+    client.close()
+
+    with pytest.raises(PysqlxError):
+        client.get_length(table).execute()
+
+
+def test_sqlite3_close_rolls_back(tmp_path: Path) -> None:
+    table = Table(table_name="t")
+    table.append_integer_column(column_name="a")
+
+    def connect() -> SqliteThree:
+        return ClientFactory.get_sqlite3_client(directory_path=str(tmp_path), database_name="db")
+
+    with connect() as client:
+        client.create(table).execute()
+        client.begin()
+        client.insert(table).execute(param_tuple=(1,))
+
+    with connect() as client:
+        assert client.get_length(table).execute() == 0
+
+
+def test_sqlite3_unsupported() -> None:
+    client = ClientFactory.get_sqlite3_client()
+    table = Table(table_name="t")
+    table.append_integer_column(column_name="a")
+
+    with pytest.raises(UnsupportedOperationError):
+        client.create(Database(database_name="d")).execute()
+
+    with pytest.raises(UnsupportedOperationError):
+        client.is_exists(Schema(schema_name="s")).execute()
+
+    with pytest.raises(UnsupportedOperationError):
+        client.create(table).execute_many(param_tuple_list=[(1,)])
+
+    with pytest.raises(UnsupportedOperationError):
+        client.select(table).execute_many(param_tuple_list=[(1,)])

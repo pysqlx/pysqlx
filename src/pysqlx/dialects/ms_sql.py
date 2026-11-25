@@ -1,51 +1,24 @@
 """Microsoft SQL Server dialect."""
 
 from datetime import datetime
-from typing import cast, override
+from typing import Any, cast, override
 
-from ..queries import (
-    Create,
-    Delete,
-    Drop,
-    GetLength,
-    Insert,
-    IsEmpty,
-    IsExists,
-    Select,
-    SelectDistinct,
-    Truncate,
-    Union,
-    Update,
-)
+from ..exceptions import InvalidArgumentError
+from ..queries import Drop, IsExists, Reflect
 from ..structures import (
+    BinaryColumn,
+    BooleanColumn,
     CharStringColumn,
-    Clause,
-    Column,
     Database,
+    DateColumn,
     DatetimeColumn,
+    DecimalColumn,
     FloatColumn,
+    Index,
     IntegerColumn,
     Schema,
     Table,
     TextColumn,
-)
-from ..structures.columntypes.logicalclause import (
-    And,
-    Between,
-    Equal,
-    GreaterThan,
-    GreaterThanEqual,
-    InList,
-    IsNotNull,
-    IsNull,
-    LessThan,
-    LessThanEqual,
-    Like,
-    NotBetween,
-    NotEqual,
-    NotInList,
-    NotLike,
-    Or,
 )
 from .i_dialect import IDialect
 
@@ -64,6 +37,10 @@ class MsSql(IDialect):
         super().__init__(dialect_name="mssql")
 
     @override
+    def quote_identifier(self, name: str) -> str:
+        return "[" + name.replace("]", "]]") + "]"
+
+    @override
     def get_table_qualifier(self, table: Table) -> str:
         q_ar = []
 
@@ -75,26 +52,27 @@ class MsSql(IDialect):
 
         q_ar.append(table.table_name)
 
-        return ".".join("[" + x + "]" for x in q_ar)
+        return ".".join(self.quote_identifier(x) for x in q_ar)
 
     @override
-    def get_column_qualifier(self, column: Column) -> str:
-        return "[" + column.column_name + "]"
+    def _get_datetime_string(self, val: datetime) -> str:
+        return val.isoformat(timespec="milliseconds")
 
-    def _get_common_declaration_string(self, column: Column, type_string: str) -> str:
-        return " ".join(
-            tuple(
-                x
-                for x in (
-                    column.column_name,
-                    type_string,
-                    "NOT NULL" if column.is_prevent_null else "",
-                    "IDENTITY(1, 1)" if column.is_identity else "",
-                    f"DEFAULT {column.default_value}" if column.default_value else "",
-                )
-                if x != ""
-            )
-        )
+    @override
+    def _get_binary_string(self, val: bytes) -> str:
+        return "0x" + val.hex()
+
+    @override
+    def _get_identity_string(self) -> str:
+        return "IDENTITY(1, 1)"
+
+    @override
+    def get_BinaryColumn_declaration(self, column: BinaryColumn) -> str:
+        return self._get_declaration_string(column, type_string="varbinary(max)")
+
+    @override
+    def get_BooleanColumn_declaration(self, column: BooleanColumn) -> str:
+        return self._get_declaration_string(column, type_string="bit")
 
     @override
     def get_CharStringColumn_declaration(self, column: CharStringColumn) -> str:
@@ -108,24 +86,31 @@ class MsSql(IDialect):
 
         type_string += f"char({column.size})"
 
-        return self._get_common_declaration_string(column, type_string)
+        return self._get_declaration_string(column, type_string)
+
+    @override
+    def get_DateColumn_declaration(self, column: DateColumn) -> str:
+        return self._get_declaration_string(column, type_string="date")
 
     @override
     def get_DatetimeColumn_declaration(self, column: DatetimeColumn) -> str:
-        return self._get_common_declaration_string(column, type_string="datetime")
+        return self._get_declaration_string(column, type_string="datetime")
+
+    @override
+    def get_DecimalColumn_declaration(self, column: DecimalColumn) -> str:
+        return self._get_declaration_string(
+            column, type_string=f"decimal({column.precision}, {column.scale})"
+        )
 
     @override
     def get_FloatColumn_declaration(self, column: FloatColumn) -> str:
-        return self._get_common_declaration_string(
-            column,
-            type_string=f"float({53 if column.is_double else 24})",
+        return self._get_declaration_string(
+            column, type_string=f"float({53 if column.is_double else 24})"
         )
 
     @override
     def get_IntegerColumn_declaration(self, column: IntegerColumn) -> str:
-        return self._get_common_declaration_string(
-            column, type_string=_int_name_dict[column.n_bytes]
-        )
+        return self._get_declaration_string(column, type_string=_int_name_dict[column.n_bytes])
 
     @override
     def get_TextColumn_declaration(self, column: TextColumn) -> str:
@@ -136,448 +121,152 @@ class MsSql(IDialect):
 
         type_string += "varchar(max)"
 
-        return self._get_common_declaration_string(column, type_string)
-
-    def _convert_value(self, val: object) -> str:
-        if isinstance(val, str):
-            return "'" + val + "'"
-
-        if isinstance(val, datetime):
-            return self._convert_value(val.isoformat(timespec="milliseconds"))
-
-        if isinstance(val, (int, float)):
-            return str(val)
-
-        if isinstance(val, Clause):
-            return "".join(
-                [
-                    "(",
-                    self.get_clause_string(val),
-                    ")",
-                ]
-            )
-
-        if isinstance(val, Column):
-            return self.get_column_qualifier(val)
-
-        raise RuntimeError(f'unknown value "{val}" of type "{type(val).__name__}"')
+        return self._get_declaration_string(column, type_string)
 
     @override
-    def get_And_string(self, clause: And) -> str:
-        return " ".join(
-            (
-                self._convert_value(clause.clause0),
-                "AND",
-                self._convert_value(clause.clause1),
-            )
-        )
+    def get_Drop_index_string(self, query: Drop, parameters: list[Any] | None = None) -> str:
+        index = cast(Index, query.structure)
+
+        name = self.quote_identifier(index.index_name)
+        scope = self.get_table_qualifier(index.table)
+        return f"DROP INDEX {name} ON {scope}"
 
     @override
-    def get_Between_string(self, clause: Between) -> str:
-        return " ".join(
-            (
-                self._convert_value(clause.column),
-                "BETWEEN",
-                self._convert_value(clause.value0),
-                "AND",
-                self._convert_value(clause.value1),
-            )
-        )
-
-    @override
-    def get_Equal_string(self, clause: Equal) -> str:
-        return " = ".join(
-            (
-                self._convert_value(clause.lhs),
-                self._convert_value(clause.rhs),
-            )
-        )
-
-    @override
-    def get_GreaterThan_string(self, clause: GreaterThan) -> str:
-        return " > ".join(
-            (
-                self._convert_value(clause.lhs),
-                self._convert_value(clause.rhs),
-            )
-        )
-
-    @override
-    def get_GreaterThanEqual_string(self, clause: GreaterThanEqual) -> str:
-        return " >= ".join(
-            (
-                self._convert_value(clause.lhs),
-                self._convert_value(clause.rhs),
-            )
-        )
-
-    @override
-    def get_InList_string(self, clause: InList) -> str:
-        return " ".join(
-            (
-                self._convert_value(clause.column),
-                "IN (",
-                ", ".join(tuple(self._convert_value(val) for val in clause.val_list)),
-                ")",
-            )
-        )
-
-    @override
-    def get_IsNotNull_string(self, clause: IsNotNull) -> str:
-        return " ".join(
-            (
-                self._convert_value(clause.column),
-                "IS NOT NULL",
-            )
-        )
-
-    @override
-    def get_IsNull_string(self, clause: IsNull) -> str:
-        return " ".join(
-            (
-                self._convert_value(clause.column),
-                "IS NULL",
-            )
-        )
-
-    @override
-    def get_LessThan_string(self, clause: LessThan) -> str:
-        return " < ".join(
-            (
-                self._convert_value(clause.lhs),
-                self._convert_value(clause.rhs),
-            )
-        )
-
-    @override
-    def get_LessThanEqual_string(self, clause: LessThanEqual) -> str:
-        return " <= ".join(
-            (
-                self._convert_value(clause.lhs),
-                self._convert_value(clause.rhs),
-            )
-        )
-
-    @override
-    def get_Like_string(self, clause: Like) -> str:
-        return " ".join(
-            (
-                self._convert_value(clause.column),
-                "LIKE",
-                self._convert_value(clause.value),
-            )
-        )
-
-    @override
-    def get_NotBetween_string(self, clause: NotBetween) -> str:
-        return " ".join(
-            (
-                self._convert_value(clause.column),
-                "NOT BETWEEN",
-                self._convert_value(clause.value0),
-                "AND",
-                self._convert_value(clause.value1),
-            )
-        )
-
-    @override
-    def get_NotEqual_string(self, clause: NotEqual) -> str:
-        return " != ".join(
-            (
-                self._convert_value(clause.lhs),
-                self._convert_value(clause.rhs),
-            )
-        )
-
-    @override
-    def get_NotInList_string(self, clause: NotInList) -> str:
-        return " ".join(
-            (
-                self._convert_value(clause.column),
-                "NOT IN (",
-                ", ".join(tuple(self._convert_value(val) for val in clause.val_list)),
-                ")",
-            )
-        )
-
-    @override
-    def get_NotLike_string(self, clause: NotLike) -> str:
-        return " ".join(
-            (
-                self._convert_value(clause.column),
-                "NOT LIKE",
-                self._convert_value(clause.value),
-            )
-        )
-
-    @override
-    def get_Or_string(self, clause: Or) -> str:
-        return " ".join(
-            (
-                self._convert_value(clause.clause0),
-                "OR",
-                self._convert_value(clause.clause1),
-            )
-        )
-
-    @override
-    def get_Create_database_string(self, query: Create) -> str:
-        database = cast(Database, query.structure)
-
-        return f"CREATE DATABASE {database.database_name}"
-
-    @override
-    def get_Create_schema_string(self, query: Create) -> str:
-        schema = cast(Schema, query.structure)
-
-        sql_string = f"CREATE SCHEMA {schema.schema_name}"
-
-        if not schema.owner_name:
-            return sql_string
-
-        return f"{sql_string} AUTHORIZATION {schema.owner_name}"
-
-    @override
-    def get_Create_table_string(self, query: Create) -> str:
-        table = cast(Table, query.structure)
-
-        if not table.columns:
-            raise RuntimeError("table has no columns")
-
-        table_cols = [self.get_column_declaration(col) for col in table.columns]
-        table_keys = tuple(col.column_name for col in table.columns if col.is_primary_key)
-
-        if table_keys:
-            table_cols.append("PRIMARY KEY ({})".format(", ".join(table_keys)))
-
-        return "CREATE TABLE {} (\n{}\n)".format(
-            self.get_table_qualifier(table),
-            ",\n".join(table_cols),
-        )
-
-    @override
-    def get_Delete_table_string(self, query: Delete) -> str:
-        table = query.structure
-        condition = query.condition
-
-        return " ".join(
-            (
-                "DELETE FROM",
-                self.get_table_qualifier(table),
-                "WHERE",
-                self.get_clause_string(condition),
-            )
-        )
-
-    @override
-    def get_Drop_database_string(self, query: Drop) -> str:
-        database = cast(Database, query.structure)
-
-        return f"DROP DATABASE {database.database_name}"
-
-    @override
-    def get_Drop_schema_string(self, query: Drop) -> str:
-        schema = cast(Schema, query.structure)
-
-        return f"DROP SCHEMA {schema.schema_name}"
-
-    @override
-    def get_Drop_table_string(self, query: Drop) -> str:
-        table = cast(Table, query.structure)
-
-        return f"DROP TABLE {self.get_table_qualifier(table)}"
-
-    @override
-    def get_GetLength_table_string(self, query: GetLength) -> str:
-        table = query.structure
-
-        return f"SELECT COUNT(*) FROM {self.get_table_qualifier(table)}"
-
-    @override
-    def get_Insert_table_string(self, query: Insert) -> str:
-        table = query.structure
-        columns = query.columns
-
-        col_names = tuple(self.get_column_qualifier(col) for col in columns)
-
-        return "INSERT INTO {} ({}) VALUES ({})".format(
-            self.get_table_qualifier(table),
-            ",\n".join(col_names),
-            ", ".join(["?"] * len(col_names)),
-        )
-
-    @override
-    def get_IsEmpty_table_string(self, query: IsEmpty) -> str:
-        table = query.structure
-
-        return f"SELECT COUNT(*) FROM {self.get_table_qualifier(table)}"
-
-    @override
-    def get_IsExists_database_string(self, query: IsExists) -> str:
+    def get_IsExists_database_string(
+        self, query: IsExists, parameters: list[Any] | None = None
+    ) -> str:
         database = cast(Database, query.structure)
 
         return f"""if exists (
-    SELECT name FROM master.sys.databases WHERE name='{database.database_name}')
+    SELECT name FROM master.sys.databases
+    WHERE name={self.get_literal_string(database.database_name)})
     SELECT 1 AS result;
 else
     SELECT 0 AS result;"""
 
     @override
-    def get_IsExists_schema_string(self, query: IsExists) -> str:
+    def get_IsExists_schema_string(
+        self, query: IsExists, parameters: list[Any] | None = None
+    ) -> str:
         schema = cast(Schema, query.structure)
 
         return f"""if exists (
-    SELECT schema_name FROM information_schema.schemata WHERE schema_name='{schema.schema_name}')
+    SELECT schema_name FROM information_schema.schemata
+    WHERE schema_name={self.get_literal_string(schema.schema_name)})
     SELECT 1 AS result;
 else
     SELECT 0 AS result;"""
 
     @override
-    def get_IsExists_table_string(self, query: IsExists) -> str:
+    def get_IsExists_table_string(
+        self, query: IsExists, parameters: list[Any] | None = None
+    ) -> str:
         table = cast(Table, query.structure)
 
         return f"""if exists (
     SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE='BASE TABLE'
-    AND TABLE_NAME='{table.table_name}')
+    AND TABLE_NAME={self.get_literal_string(table.table_name)})
     SELECT 1 AS result;
 else
     SELECT 0 AS result;"""
 
     @override
-    def get_Select_table_string(self, query: Select) -> str:
-        table = query.structure
-        top = query.top
-        columns = query.columns
-        ascend_by = query.ascend_by
-        descend_by = query.descend_by
-        condition = query.condition
+    def get_IsExists_index_string(
+        self, query: IsExists, parameters: list[Any] | None = None
+    ) -> str:
+        index = cast(Index, query.structure)
 
-        sql_ar = [
-            "SELECT",
-            "" if top is None else f"TOP ({top})",
-            ",\n".join(tuple(self.get_column_qualifier(col) for col in columns)),
-            "FROM",
-            self.get_table_qualifier(table),
-        ]
-
-        if condition:
-            sql_ar += [
-                "WHERE",
-                self.get_clause_string(condition),
-            ]
-
-        if any((ascend_by, descend_by)):
-            order_ar = []
-
-            if ascend_by:
-                order_ar += [self.get_column_qualifier(col) + " ASC" for col in ascend_by]
-
-            if descend_by:
-                order_ar += [self.get_column_qualifier(col) + " DESC" for col in descend_by]
-
-            sql_ar += [
-                "ORDER BY",
-                ",\n".join(order_ar),
-            ]
-
-        return " ".join(tuple(x for x in sql_ar if x != ""))
+        return f"""if exists (
+    SELECT 1 FROM sys.indexes WHERE name={self.get_literal_string(index.index_name)}
+    AND object_id=OBJECT_ID({self.get_literal_string(self.get_table_qualifier(index.table))}))
+    SELECT 1 AS result;
+else
+    SELECT 0 AS result;"""
 
     @override
-    def get_SelectDistinct_table_string(self, query: SelectDistinct) -> str:
-        table = query.structure
-        columns = query.columns
-        ascend_by = query.ascend_by
-        descend_by = query.descend_by
-        condition = query.condition
+    def _get_limit_strings(
+        self,
+        top: int | None,
+        offset: int | None,
+        is_ordered: bool,
+    ) -> tuple[str, str]:
+        if offset is None:
+            return ("" if top is None else f"TOP ({top})"), ""
 
-        sql_ar = [
-            "SELECT DISTINCT",
-            ", ".join(tuple(self.get_column_qualifier(col) for col in columns)),
-            "FROM",
-            self.get_table_qualifier(table),
-        ]
+        if not is_ordered:
+            raise InvalidArgumentError("SQL Server needs ascend_by or descend_by to use offset")
 
-        if condition:
-            sql_ar += [
-                "WHERE",
-                self.get_clause_string(condition),
-            ]
+        suffix = f"OFFSET {offset} ROWS"
 
-        if any((ascend_by, descend_by)):
-            order_ar = []
+        if top is not None:
+            suffix += f" FETCH NEXT {top} ROWS ONLY"
 
-            if ascend_by:
-                order_ar += [self.get_column_qualifier(col) + " ASC" for col in ascend_by]
-
-            if descend_by:
-                order_ar += [self.get_column_qualifier(col) + " DESC" for col in descend_by]
-
-            sql_ar += [
-                "ORDER BY",
-                ", ".join(order_ar),
-            ]
-
-        return " ".join(sql_ar)
+        return "", suffix
 
     @override
-    def get_Truncate_table_string(self, query: Truncate) -> str:
+    def get_Reflect_table_string(self, query: Reflect, parameters: list[Any] | None = None) -> str:
         table = query.structure
 
-        return f"TRUNCATE TABLE {self.get_table_qualifier(table)}"
-
-    @override
-    def get_Union_table_string(self, query: Union) -> str:
-        table_list = query.structure_list
-        query_list = query.query_list
-        columns_list = query.columns_list
-        is_all = query.is_all
-        ascend_by = query.ascend_by
-        descend_by = query.descend_by
-        condition = query.condition
-
-        union_str = ("\nUNION{}\n".format(" ALL" if is_all else "")).join(
-            tuple(
-                " ".join(
-                    [
-                        "SELECT",
-                        ",\n".join(
-                            tuple(self.get_column_qualifier(col) for col in columns_list[i])
-                        ),
-                        "FROM",
-                        "(\n" + self.get_query_string(query_list[i]) + "\n)",
-                        table_list[i].table_name,
-                    ]
-                )
-                for i in range(len(table_list))
-            )
-        ) + "\n"
-
-        if condition:
-            union_str += "WHERE\n" + self.get_clause_string(condition)
-
-        if any((ascend_by, descend_by)):
-            order_ar = []
-
-            if ascend_by:
-                order_ar += [self.get_column_qualifier(col) + " ASC" for col in ascend_by]
-
-            if descend_by:
-                order_ar += [self.get_column_qualifier(col) + " DESC" for col in descend_by]
-
-            union_str += "ORDER BY\n" + ",\n".join(order_ar)
-
-        return union_str
-
-    @override
-    def get_Update_table_string(self, query: Update) -> str:
-        table = query.structure
-        columns = query.columns
-        condition = query.condition
-
-        col_names = tuple(self.get_column_qualifier(col) for col in columns)
-
-        return "UPDATE {}\nSET {}\nWHERE {}".format(
-            self.get_table_qualifier(table),
-            ", ".join(tuple(col + "=?" for col in col_names)),
-            self.get_clause_string(condition),
+        return self._get_information_schema_string(
+            table,
+            schema_string=(
+                self.get_literal_string(table.schema.schema_name)
+                if table.schema
+                else "SCHEMA_NAME()"
+            ),
+            identity_string=(
+                "COLUMNPROPERTY(OBJECT_ID(QUOTENAME(c.table_schema) + '.' +"
+                " QUOTENAME(c.table_name)), c.column_name, 'IsIdentity')"
+            ),
         )
+
+    @override
+    def _get_reflected_type(
+        self,
+        data_type: str,
+        size: int | None,
+        precision: int | None,
+        column_type: str | None,
+    ) -> dict[str, Any]:
+        if data_type in ("varchar", "nvarchar", "char", "nchar"):
+            is_unicode = data_type.startswith("n")
+
+            # A size of -1 stands for "max".
+            if size is None or size < 0:
+                return {"kind": "text", "is_unicode": is_unicode}
+
+            return {
+                "kind": "char",
+                "is_unicode": is_unicode,
+                "is_fixed": not data_type.endswith("varchar"),
+                "size": size,
+            }
+
+        if data_type in ("text", "ntext"):
+            return {"kind": "text", "is_unicode": data_type == "ntext"}
+
+        if data_type in ("tinyint", "smallint", "int", "bigint"):
+            return {
+                "kind": "integer",
+                "n_bytes": {"tinyint": 1, "smallint": 2, "int": 4, "bigint": 8}[data_type],
+            }
+
+        if data_type in ("float", "real"):
+            return {"kind": "float", "is_double": data_type == "float" and (precision or 53) > 24}
+
+        if data_type in ("datetime", "datetime2", "smalldatetime"):
+            return {"kind": "datetime"}
+
+        if data_type == "date":
+            return {"kind": "date"}
+
+        if data_type == "bit":
+            return {"kind": "boolean"}
+
+        if data_type in ("decimal", "numeric"):
+            return {"kind": "decimal", "precision": precision}
+
+        if data_type in ("varbinary", "binary", "image"):
+            return {"kind": "binary"}
+
+        return super()._get_reflected_type(data_type, size, precision, column_type)

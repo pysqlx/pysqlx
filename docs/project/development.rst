@@ -20,10 +20,6 @@ common tasks are available as ``make`` targets.
 ``make install`` creates a virtual environment in ``.venv`` with the package
 and all development dependencies, exactly as pinned in ``uv.lock``.
 
-On macOS, install unixODBC first, as described in
-:doc:`/getting-started/installation`. Without it the package cannot be
-imported, and neither the tests nor the documentation can run.
-
 Make targets
 ------------
 
@@ -49,6 +45,12 @@ Run ``make`` without arguments to list the targets.
      - run the tests in parallel with a coverage report
    * - ``make check``
      - run every check that CI runs
+   * - ``make servers-up``
+     - start throwaway PostgreSQL and MySQL servers with Docker
+   * - ``make test-servers``
+     - run the tests of the clients against these servers
+   * - ``make servers-down``
+     - stop these servers
    * - ``make docs``
      - build this documentation, treating warnings as errors
    * - ``make docs-live``
@@ -68,8 +70,9 @@ Project layout
    src/pysqlx/
        clients/       clients, which connect to a database and execute queries
        dialects/      dialects, which turn queries into SQL
+       exceptions/    exceptions of the package
        queries/       queries, one module per query
-       structures/    databases, schemas, tables, columns and clauses
+       structures/    databases, schemas, tables, columns, clauses and indexes
        logger.py      logger of the package
    tests/             tests, in the same layout
    docs/              this documentation
@@ -79,7 +82,9 @@ underscores, and is exported by the ``__init__.py`` of its package.
 
 Dependencies are declared in ``pyproject.toml``. The development
 dependencies are split into the groups ``test``, ``lint`` and ``docs``, and
-the group ``dev`` includes all of them.
+the group ``dev`` includes all of them. The libraries of the database
+servers are optional dependencies of the package and part of the group
+``test``. The package only imports them when a client is created.
 
 Code style
 ----------
@@ -101,30 +106,80 @@ dialect finds the method which writes the SQL in the same way, also using the
 kind of structure which the query acts on: ``get_Select_table_string()``.
 This is why these methods keep the capital letters of the class names.
 
+The dialect writes the SQL in one of two ways. Given a list of parameters, it
+adds each value of a condition to the list and writes a placeholder, which is
+what the clients execute. Without the list, it writes the values into the
+SQL, which is what ``get_query_string()`` returns for reading.
+
+:py:class:`~pysqlx.dialects.IDialect` writes the SQL which the databases have
+in common, and :py:class:`~pysqlx.clients.IClient` executes every query. A
+dialect or a client only defines what its database does differently.
+
 Adding a query
 --------------
 
 1. Add a module with the query class to ``pysqlx.queries``, derived from
    :py:class:`~pysqlx.queries.Query`, and export it from the package.
-2. Add the abstract methods ``get_<Query>_<structure>_string()`` and the
-   method ``get_<Query>_string()`` to
-   :py:class:`~pysqlx.dialects.IDialect`, and implement the former in every
-   dialect.
-3. Add ``_execute_<Query>()`` and ``_execute_many_<Query>()`` to
-   :py:class:`~pysqlx.clients.IClient` and to every client, and a method
-   which creates the query.
-4. Add tests, a section to ``docs/guide/queries.rst`` and the class to
-   ``docs/reference/index.rst``.
+   Override ``execute()`` to declare what the query returns.
+2. Add the methods ``get_<Query>_<structure>_string()`` and
+   ``get_<Query>_string()`` to :py:class:`~pysqlx.dialects.IDialect`, and
+   override the former in the dialects whose SQL differs.
+3. Add ``_execute_<Query>()`` to :py:class:`~pysqlx.clients.IClient`, and a
+   method which creates the query. Add ``_execute_many_<Query>()`` if the
+   query can be executed with several sets of parameters.
+4. Add the query to the cases of ``tests/dialects/cases.py`` and to the
+   scenario of ``tests/clients/scenario.py``, a section to
+   ``docs/guide/queries.rst`` and the class to ``docs/reference/index.rst``.
+
+Adding a database
+-----------------
+
+1. Add a dialect derived from :py:class:`~pysqlx.dialects.IDialect`, which
+   defines how names are quoted, the types of the columns and the queries
+   which look structures up.
+2. Add a client derived from :py:class:`~pysqlx.clients.IClient`, which
+   opens the connection and starts a transaction. Import the library of the
+   database inside the client, so that the package works without it, and add
+   the library as an optional dependency.
+3. Add a method to :py:class:`~pysqlx.clients.ClientFactory`.
+4. Add tests which run the scenario of ``tests/clients/scenario.py``, the
+   expected SQL to ``tests/dialects/std``, and a server to the ``servers``
+   job of ``.github/workflows/tests.yml``.
 
 Testing
 -------
 
-The tests use a SQLite database in memory and need no setup.
+``make test`` uses SQLite databases in memory and needs no setup. The tests
+which need a database server are skipped.
 
-``tests/clients/notest_pyodbc.py`` holds the tests of the ODBC client. They
-need a SQL Server and are not collected by ``pytest``. To run them, fill in
-the connection settings at the top of ``tests/conftest.py`` and pass the file
-to ``pytest``.
+Every client runs the same scenario, in ``tests/clients/scenario.py``,
+against its database. A server is given to the tests as an environment
+variable of the form ``user:password@host:port/database``:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - Variable
+     - Server
+   * - ``PYSQLX_TEST_POSTGRESQL``
+     - PostgreSQL
+   * - ``PYSQLX_TEST_MYSQL``
+     - MySQL or MariaDB
+   * - ``PYSQLX_TEST_MSSQL``
+     - Microsoft SQL Server, which also needs its ODBC driver
+
+The scenario creates and drops tables whose names start with ``pysqlx``. Use
+servers which hold nothing else.
+
+With Docker, ``make servers-up`` starts a PostgreSQL and a MySQL server,
+``make test-servers`` runs the tests of the clients against them and
+``make servers-down`` stops them. CI runs the scenario against the three
+servers in the ``servers`` job.
+
+The SQL which each dialect writes for a set of queries is compared with the
+files of ``tests/dialects/std``. When the SQL changes on purpose, review the
+difference and update these files.
 
 Documentation
 -------------

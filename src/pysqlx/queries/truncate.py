@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, override
 
 from ..structures import Table
 from .query import Query
@@ -27,3 +28,7 @@ class Truncate(Query):
     def structure(self) -> Table:
         """Table to empty."""
         return self.__structure
+
+    @override
+    def execute(self, param_tuple: Sequence[Any] | None = None) -> None:
+        super().execute(param_tuple)

@@ -40,12 +40,7 @@ them into the SQL of the database it is connected to.
 
     from pysqlx import ClientFactory, Table
 
-    client = ClientFactory.get_sqlite3_client(
-        directory_path=None,
-        dialect_name="sqlite",
-        driver_name="memory",
-        database_name="shop",
-    )
+    client = ClientFactory.get_sqlite3_client()
 
     orders = Table(table_name="orders")
     customer = orders.append_char_string_column(column_name="customer", size=50)
@@ -57,10 +52,15 @@ them into the SQL of the database it is connected to.
     rows = client.select(orders, condition=total > 100).execute()
     # (('Ada', 120.0),)
 
-It supports two kinds of databases through one interface:
+It supports four databases through one interface:
 
-* SQLite, in a file or in memory, using the ``sqlite3`` module
+* SQLite, in a file or in memory, with nothing to install
+* PostgreSQL, using ``psycopg``
+* MySQL and MariaDB, using ``pymysql``
 * Microsoft SQL Server, through ODBC, using ``pyodbc``
+
+The values of the conditions are always passed to the database as parameters,
+never written into the SQL.
 
 ``pysqlx`` is maintained by `Bassem Girgis <https://girgis.me>`_.
 
@@ -79,6 +79,8 @@ It supports two kinds of databases through one interface:
    guide/structures
    guide/conditions
    guide/queries
+   guide/transactions
+   guide/errors
    guide/logging
 
 .. toctree::

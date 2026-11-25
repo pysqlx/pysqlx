@@ -2,6 +2,7 @@
 
 from typing import override
 
+from ....exceptions import InvalidArgumentError
 from .clause import Clause
 
 
@@ -10,7 +11,7 @@ class Or(Clause):
 
     :param clause0: the first clause
     :param clause1: the second clause
-    :raises RuntimeError: if one of the arguments is not a clause
+    :raises InvalidArgumentError: if one of the arguments is not a clause
     """
 
     def __init__(self, clause0: Clause, clause1: Clause) -> None:
@@ -20,7 +21,7 @@ class Or(Clause):
                 isinstance(clause1, Clause),
             )
         ):
-            raise RuntimeError(
+            raise InvalidArgumentError(
                 f'invalid clauses of types "{type(clause0).__name__}" '
                 f'and "{type(clause1).__name__}"'
             )

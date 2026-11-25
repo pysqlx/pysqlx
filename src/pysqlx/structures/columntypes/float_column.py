@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from ...exceptions import InvalidArgumentError
 from .column import Column
 
 if TYPE_CHECKING:
@@ -19,6 +20,7 @@ class FloatColumn(Column):
     :param default_value: the default value of the column, if any
     :param is_primary_key: whether the column is part of the primary key
     :param is_prevent_null: whether the column rejects null values
+    :raises InvalidArgumentError: if an argument has an invalid type or value
     """
 
     def __init__(
@@ -39,7 +41,8 @@ class FloatColumn(Column):
             is_prevent_null=is_prevent_null,
         )
 
-        assert isinstance(is_double, bool)
+        if not (isinstance(is_double, bool)):
+            raise InvalidArgumentError(f'invalid is_double "{is_double}"')
 
         self.__is_double = is_double
 

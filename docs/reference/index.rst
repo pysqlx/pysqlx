@@ -21,6 +21,8 @@ Clients
    ClientFactory
    IClient
    SqliteThree
+   Psycopg
+   Pymysql
    Pyodbc
 
 Structures
@@ -37,6 +39,9 @@ Structures
    Database
    Schema
    Table
+   ForeignKey
+   Index
+   Join
 
 Columns
 -------
@@ -49,11 +54,16 @@ Columns
    :nosignatures:
 
    Column
+   BinaryColumn
+   BooleanColumn
    CharStringColumn
+   DateColumn
    DatetimeColumn
+   DecimalColumn
    FloatColumn
    IntegerColumn
    TextColumn
+   Aggregate
 
 Conditions
 ----------
@@ -97,6 +107,7 @@ Queries
    Create
    Drop
    IsExists
+   Reflect
    IsEmpty
    GetLength
    Insert
@@ -119,4 +130,23 @@ Dialects
 
    IDialect
    Sqlite
+   PostgreSql
+   MySql
    MsSql
+
+Exceptions
+----------
+
+.. currentmodule:: pysqlx.exceptions
+
+.. autosummary::
+   :toctree: api
+   :template: autosummary/class.rst
+   :nosignatures:
+
+   PysqlxError
+   ConnectionFailedError
+   InvalidArgumentError
+   MissingDependencyError
+   TransactionError
+   UnsupportedOperationError

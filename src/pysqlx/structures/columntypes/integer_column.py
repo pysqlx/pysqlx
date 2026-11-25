@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from ...exceptions import InvalidArgumentError
 from .column import Column
 
 if TYPE_CHECKING:
@@ -28,6 +29,7 @@ class IntegerColumn(Column):
         column
     :param is_primary_key: whether the column is part of the primary key
     :param is_prevent_null: whether the column rejects null values
+    :raises InvalidArgumentError: if an argument has an invalid type or value
     """
 
     def __init__(
@@ -49,8 +51,10 @@ class IntegerColumn(Column):
             is_prevent_null=is_prevent_null,
         )
 
-        assert isinstance(n_bytes, int)
-        assert n_bytes in _valid_bytes
+        if not (isinstance(n_bytes, int)):
+            raise InvalidArgumentError(f'invalid n_bytes "{n_bytes}"')
+        if n_bytes not in _valid_bytes:
+            raise InvalidArgumentError(f'invalid n_bytes "{n_bytes}"')
 
         self.__n_bytes = n_bytes
 

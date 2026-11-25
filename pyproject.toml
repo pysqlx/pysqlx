@@ -13,7 +13,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Bassem Girgis", email = "brgirgis@gmail.com" }]
 maintainers = [{ name = "Bassem Girgis", email = "brgirgis@gmail.com" }]
-keywords = ["sql", "database", "sqlite", "odbc", "sql server"]
+keywords = ["sql", "database", "sqlite", "sql server", "postgresql", "mysql", "odbc"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
@@ -28,7 +28,13 @@ classifiers = [
   "Topic :: Database :: Front-Ends",
   "Typing :: Typed",
 ]
-dependencies = ["pyodbc>=5.2.0"]
+dependencies = []
+
+[project.optional-dependencies]
+odbc = ["pyodbc>=5.2.0"]
+postgresql = ["psycopg[binary]>=3.2.0"]
+mysql = ["pymysql>=1.1.0"]
+all = ["pysqlx[odbc,postgresql,mysql]"]
 
 
 [project.urls]
@@ -40,7 +46,16 @@ Author = "https://girgis.me"
 
 
 [dependency-groups]
-test = ["pytest>=9.0.2", "pytest-cov>=7.0.0", "pytest-xdist>=3.8.0"]
+# The libraries of the clients are only imported by the tests which reach a
+# database server.
+test = [
+  "pytest>=9.0.2",
+  "pytest-cov>=7.0.0",
+  "pytest-xdist>=3.8.0",
+  "psycopg[binary]>=3.2.0",
+  "pymysql>=1.1.0",
+  "pyodbc>=5.2.0",
+]
 lint = ["mypy>=1.19.1", "ruff>=0.14.0"]
 docs = ["sphinx>=8.1.3", "sphinx-autobuild>=2024.10.3", "furo>=2025.9.25"]
 dev = [
@@ -101,8 +116,8 @@ warn_unreachable = true
 disallow_any_unimported = true
 show_error_codes = true
 
-# pyodbc ships its type hints as a single stub file, which mypy does not look
-# for in the installed packages.
+# The libraries of the clients are optional and imported on demand, so their
+# type hints are not relied on.
 [[tool.mypy.overrides]]
-module = "pyodbc"
+module = ["pyodbc", "psycopg", "pymysql"]
 ignore_missing_imports = true
