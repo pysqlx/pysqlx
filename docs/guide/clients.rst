@@ -4,6 +4,16 @@ Clients
 A client holds the connection to a database and executes queries. Clients are
 created by :py:class:`~pysqlx.clients.ClientFactory`.
 
+.. image:: /_static/databases-light.svg
+    :alt: Each client uses one library to reach one database
+    :width: 100%
+    :class: only-light
+
+.. image:: /_static/databases-dark.svg
+    :alt: Each client uses one library to reach one database
+    :width: 100%
+    :class: only-dark
+
 .. list-table::
    :header-rows: 1
    :widths: 30 20 25 25

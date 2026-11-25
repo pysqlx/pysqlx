@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="250" viewBox="0 0 760 250" role="img">
+<title>From Python objects to the SQL of a database</title>
+<rect x="1" y="22" width="123" height="64" rx="8" fill="#1f2430" stroke="#3b4252" stroke-width="1.5"/>
+<text x="62.5" y="51" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" font-weight="600" xml:space="preserve">Tables and</text>
+<text x="62.5" y="70" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" font-weight="600" xml:space="preserve">conditions</text>
+<rect x="159" y="22" width="123" height="64" rx="8" fill="#1f2430" stroke="#3b4252" stroke-width="1.5"/>
+<text x="220.5" y="60" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" font-weight="600" xml:space="preserve">Query</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="128" y1="54" x2="155" y2="54" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="317" y="22" width="123" height="64" rx="8" fill="#25264a" stroke="#a5b4fc" stroke-width="1.5"/>
+<text x="378.5" y="51" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" font-weight="600" xml:space="preserve">Client</text>
+<text x="378.5" y="70" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" font-weight="600" xml:space="preserve">and dialect</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="286" y1="54" x2="313" y2="54" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="475" y="22" width="123" height="64" rx="8" fill="#1f2430" stroke="#3b4252" stroke-width="1.5"/>
+<text x="536.5" y="51" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" font-weight="600" xml:space="preserve">SQL and</text>
+<text x="536.5" y="70" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" font-weight="600" xml:space="preserve">parameters</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="444" y1="54" x2="471" y2="54" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="633" y="22" width="123" height="64" rx="8" fill="#1f2430" stroke="#3b4252" stroke-width="1.5"/>
+<text x="694.5" y="60" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" font-weight="600" xml:space="preserve">Database</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="602" y1="54" x2="629" y2="54" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<text x="1" y="124" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#9ca3af" text-anchor="start" xml:space="preserve">What you write</text>
+<rect x="1" y="134" width="758" height="38" rx="6" fill="#161a22" stroke="#3b4252" stroke-width="1.5"/>
+<text x="16" y="158" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#e5e7eb" text-anchor="start" xml:space="preserve">client.select(orders, condition=(customer == &quot;Ada&quot;) &amp; (total &gt; 50))</text>
+<text x="1" y="198" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#9ca3af" text-anchor="start" xml:space="preserve">What the database receives</text>
+<rect x="1" y="208" width="758" height="38" rx="6" fill="#161a22" stroke="#3b4252" stroke-width="1.5"/>
+<text x="16" y="232" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#e5e7eb" text-anchor="start" xml:space="preserve">SELECT ... FROM [orders] WHERE ([customer] = ?) AND ([total] &gt; ?)</text>
+<text x="744" y="232" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#a5b4fc" text-anchor="end" xml:space="preserve">[&#x27;Ada&#x27;, 50]</text>
+</svg>

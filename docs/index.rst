@@ -52,6 +52,16 @@ them into the SQL of the database it is connected to.
     rows = client.select(orders, condition=total > 100).execute()
     # (('Ada', 120.0),)
 
+.. image:: /_static/overview-light.svg
+    :alt: A query written in Python becomes a SQL statement and its parameters
+    :width: 100%
+    :class: only-light
+
+.. image:: /_static/overview-dark.svg
+    :alt: A query written in Python becomes a SQL statement and its parameters
+    :width: 100%
+    :class: only-dark
+
 It supports four databases through one interface:
 
 * SQLite, in a file or in memory, with nothing to install

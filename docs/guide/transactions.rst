@@ -5,6 +5,16 @@ By default, every query takes effect at once. A transaction groups several
 queries: their changes take effect together when the transaction is
 committed, or not at all when it is rolled back.
 
+.. image:: /_static/transaction-light.svg
+    :alt: The changes of a transaction take effect on commit and are undone on rollback
+    :width: 100%
+    :class: only-light
+
+.. image:: /_static/transaction-dark.svg
+    :alt: The changes of a transaction take effect on commit and are undone on rollback
+    :width: 100%
+    :class: only-dark
+
 The ``transaction()`` method of a client runs the queries of a ``with`` block
 in one transaction. It commits at the end of the block, and rolls back if the
 block raises an exception:

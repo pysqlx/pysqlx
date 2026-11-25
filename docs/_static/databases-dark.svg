@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="268" viewBox="0 0 760 268" role="img">
+<title>One interface for four databases</title>
+<rect x="1" y="92" width="150" height="84" rx="8" fill="#25264a" stroke="#a5b4fc" stroke-width="1.5"/>
+<text x="76" y="128" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" font-weight="600" xml:space="preserve">Your code</text>
+<text x="76" y="150" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#9ca3af" text-anchor="middle" xml:space="preserve">tables and queries</text>
+<text x="302" y="16" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#9ca3af" text-anchor="middle" xml:space="preserve">Client</text>
+<text x="476" y="16" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#9ca3af" text-anchor="middle" xml:space="preserve">Library</text>
+<text x="664" y="16" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" fill="#9ca3af" text-anchor="middle" xml:space="preserve">Database</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="151" y1="134" x2="228" y2="50" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="232" y="28" width="140" height="44" rx="8" fill="#1f2430" stroke="#3b4252" stroke-width="1.5"/>
+<text x="302" y="55" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" font-weight="600" xml:space="preserve">SqliteThree</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="372" y1="50" x2="412" y2="50" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="416" y="28" width="120" height="44" rx="8" fill="#161a22" stroke="#3b4252" stroke-width="1.5"/>
+<text x="476" y="55" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#e5e7eb" text-anchor="middle" xml:space="preserve">sqlite3</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="536" y1="50" x2="576" y2="50" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="580" y="28" width="168" height="44" rx="22" fill="#1f2430" stroke="#3b4252" stroke-width="1.5"/>
+<text x="664" y="55" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" xml:space="preserve">SQLite</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="151" y1="134" x2="228" y2="110" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="232" y="88" width="140" height="44" rx="8" fill="#1f2430" stroke="#3b4252" stroke-width="1.5"/>
+<text x="302" y="115" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" font-weight="600" xml:space="preserve">Psycopg</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="372" y1="110" x2="412" y2="110" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="416" y="88" width="120" height="44" rx="8" fill="#161a22" stroke="#3b4252" stroke-width="1.5"/>
+<text x="476" y="115" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#e5e7eb" text-anchor="middle" xml:space="preserve">psycopg</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="536" y1="110" x2="576" y2="110" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="580" y="88" width="168" height="44" rx="22" fill="#1f2430" stroke="#3b4252" stroke-width="1.5"/>
+<text x="664" y="115" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" xml:space="preserve">PostgreSQL</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="151" y1="134" x2="228" y2="170" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="232" y="148" width="140" height="44" rx="8" fill="#1f2430" stroke="#3b4252" stroke-width="1.5"/>
+<text x="302" y="175" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" font-weight="600" xml:space="preserve">Pymysql</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="372" y1="170" x2="412" y2="170" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="416" y="148" width="120" height="44" rx="8" fill="#161a22" stroke="#3b4252" stroke-width="1.5"/>
+<text x="476" y="175" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#e5e7eb" text-anchor="middle" xml:space="preserve">pymysql</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="536" y1="170" x2="576" y2="170" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="580" y="148" width="168" height="44" rx="22" fill="#1f2430" stroke="#3b4252" stroke-width="1.5"/>
+<text x="664" y="175" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" xml:space="preserve">MySQL, MariaDB</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="151" y1="134" x2="228" y2="230" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="232" y="208" width="140" height="44" rx="8" fill="#1f2430" stroke="#3b4252" stroke-width="1.5"/>
+<text x="302" y="235" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" font-weight="600" xml:space="preserve">Pyodbc</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="372" y1="230" x2="412" y2="230" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="416" y="208" width="120" height="44" rx="8" fill="#161a22" stroke="#3b4252" stroke-width="1.5"/>
+<text x="476" y="235" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#e5e7eb" text-anchor="middle" xml:space="preserve">pyodbc</text>
+<defs><marker id="arrow-6b7280" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#6b7280"/></marker></defs><line x1="536" y1="230" x2="576" y2="230" stroke="#6b7280" stroke-width="1.8" marker-end="url(#arrow-6b7280)"/>
+<rect x="580" y="208" width="168" height="44" rx="22" fill="#1f2430" stroke="#3b4252" stroke-width="1.5"/>
+<text x="664" y="235" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="14" fill="#e5e7eb" text-anchor="middle" xml:space="preserve">SQL Server</text>
+</svg>

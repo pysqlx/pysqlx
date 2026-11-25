@@ -21,7 +21,13 @@ except PackageNotFoundError as exc:  # pragma: no cover
         "run `uv sync --dev` (or `pip install .`) first."
     ) from exc
 
-version = ".".join(release.split(".")[:2])
+# Between releases the version of the package is a development version, such
+# as 2.0.1.dev3+g1a2b3c4, which is shown under a plain name.
+if ".dev" in release:
+    release = "development version"
+    version = release
+else:
+    version = ".".join(release.split(".")[:2])
 
 # -- General configuration ----------------------------------------------------
 

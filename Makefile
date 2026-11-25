@@ -2,7 +2,7 @@
 
 .PHONY: help install lint format typecheck test coverage check \
 	servers-up servers-down test-servers \
-	docs docs-live docs-clean version build clean
+	docs docs-live docs-images docs-clean version build clean
 
 help:  ## Show the available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -49,6 +49,9 @@ docs:  ## Build the HTML documentation, treating warnings as errors
 
 docs-live:  ## Serve the documentation and rebuild it on changes
 	uv run sphinx-autobuild docs docs/_build/html
+
+docs-images:  ## Regenerate the figures shown in the documentation
+	uv run python docs/scripts/make_images.py
 
 docs-clean:  ## Remove the built documentation
 	rm -rf docs/_build
